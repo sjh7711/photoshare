@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko-kr" class="h-full bg-gray-100">
+<head>
+    {% load static %}
+    <link rel="shortcut icon" href="{% static 'favicon/favicon.ico' %}"/>
+    <link rel="icon" type="image/png" sizes="96x96" href="{% static 'favicon/favicon-96x96.png' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon/favicon-32x32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon/favicon-16x16.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'favicon/android-chrome-192x192.png' %}"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-icon-180x180.png' %}"/>
+    <link rel="apple-touch-icon-precomposed.png" sizes="180x180" href="{% static 'favicon/apple-touch-icon-precomposed.png' %}"/>
+    <link rel="apple-touch-icon-120x120.png" sizes="120x120" href="{% static 'favicon/apple-touch-icon-120x120.png' %}"/>
+    <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>회기농장 포토</title>
+    <script src="https://hoegifarm.shop/static/css/tailwind_3.4.5.css"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3490dc',
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://hoegifarm.shop/static/js/jquery.min.js"></script>
+    {% if user.is_authenticated %}
+    <script src="{% static 'js/script.js' %}"></script>
+    {% endif %}
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            const toggleDarkMode = () => {
+                document.documentElement.classList.toggle('dark');
+                
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                localStorage.setItem('darkMode', isDarkMode);
+                document.querySelectorAll('#darkModeToggle').forEach(button => {
+                    button.textContent = isDarkMode ? '🌙' : '☀️';
+                });
+                
+                applyDarkModeStyles(); // 다크 모드 토글 시 스타일 적용
+            };
+        
+            // 페이지 로드 시 다크 모드 상태 확인 및 적용
+            const initializeDarkMode = () => {
+                const isDarkMode = localStorage.getItem('darkMode') === 'true';
+                if (isDarkMode) {
+                    document.documentElement.classList.add('dark');
+                    document.querySelectorAll('#darkModeToggle').forEach(button => {
+                        button.textContent = '🌙';
+                    });
+                }
+                applyDarkModeStyles(); // 초기 로드 시 스타일 적용
+            };
+        
+            initializeDarkMode(); // 페이지 로드 시 초기화 함수 호출
+        
+            document.querySelectorAll('#darkModeToggle').forEach(button => {
+                button.addEventListener('click', toggleDarkMode);
+            });
+
+            function applyDarkModeStyles() {
+                const isDark = document.documentElement.classList.contains('dark');
+                document.querySelectorAll('.like-button, .dislike-button').forEach(button => {
+                    button.classList.toggle('bg-gray-200', !isDark);
+                    button.classList.toggle('dark:bg-gray-700', isDark);
+                    button.classList.toggle('text-gray-700', !isDark);
+                    button.classList.toggle('dark:text-gray-300', isDark);
+                });
+            }
+
+            {% if user.is_authenticated %}
+            const toggleButton = document.querySelectorAll('#subscriptionModeToggle');
+            let device_id = localStorage.getItem('device_id');
+        
+            function updateButtonText(subscribed) {
+                toggleButton.forEach(button => {
+                    button.textContent = subscribed ? '알림✅' : '알림❌';
+                });
+            }
+        
+            function checkNotificationPermission() {
+                return new Promise((resolve, reject) => {
+                    if (!('Notification' in window)) {
+                        reject("이 브라우저는 알림을 지원하지 않습니다.");
+                    } else {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                resolve();
+                            } else {
+                                reject("알림 권한이 거부되었습니다. 브라우저 설정에서 권한을 변경해주세요.");
+                            }
+                        });
+                    }
+                });
+            }
+        
+            async function toggleSubscription() {
+                try {
+                    await checkNotificationPermission();
+                    device_id = localStorage.getItem('device_id');
+                    const response = await fetch('/toggle_push_notification/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
+                        body: JSON.stringify({
+                            device_id: device_id,
+                            type: 'post'
+                        })
+                    });
+        
+                    const data = await response.json();
+                    localStorage.setItem('blockSubscribed', data.blockSubscribed);
+                    if (data.blockSubscribed == 'true') {
+                        localStorage.removeItem('device_id');
+                        localStorage.removeItem('serviceWorkerRegistered');
+                    }
+                    updateButtonText(data.blockSubscribed == "true" ? false : true);
+                    alert(data.message);
+                    window.location.reload();
+                } catch (error) {
+                    alert(error);
+                    console.error('Error:', error);
+                }
+            }
+        
+            // 초기 상태 확인
+            if (device_id) {
+                if(localStorage.getItem('blockSubscribed') == 'true') {
+                    updateButtonText(false);
+                } else {
+                    Notification.requestPermission().then(permission => {
+                        if (permission === "granted") {
+                            updateButtonText(true);
+                        } else {
+                            updateButtonText(false);
+                        }
+                    });
+                }
+            } else {
+                updateButtonText(false);
+            }
+        
+            toggleButton.forEach(button => {
+                button.addEventListener('click', toggleSubscription);
+            });
+            {% endif %}
+
+            const mobileMenuButton = document.querySelector('[aria-controls="mobile-menu"]');
+            const mobileMenu = document.getElementById('mobile-menu');
+            const mobileMenuContent = document.getElementById('mobile-menu-content');
+            const body = document.body;
+            let lastScrollPosition = 0;
+            const navbarHeight = 56; // 3.5rem in pixels, adjust if your navbar height is different
+
+            function setDynamicPadding() {
+                const scrollPosition = window.pageYOffset;
+                const paddingTop = Math.max(0, navbarHeight - scrollPosition);
+                mobileMenuContent.style.paddingTop = `${paddingTop}px`;
+            }
+
+            function toggleScrollLock() {
+                if (body.style.overflow === 'hidden') {
+                    body.style.overflow = '';
+                    body.style.position = '';
+                    body.style.top = '';
+                    window.scrollTo(0, lastScrollPosition);
+                } else {
+                    lastScrollPosition = window.pageYOffset;
+                    body.style.overflow = 'hidden';
+                    body.style.position = 'fixed';
+                    body.style.top = `-${lastScrollPosition}px`;
+                    body.style.width = '100%';
+                }
+            }
+
+            mobileMenuButton.addEventListener('click', () => {
+                const expanded = mobileMenuButton.getAttribute('aria-expanded') === 'true' || false;
+                mobileMenuButton.setAttribute('aria-expanded', !expanded);
+                
+                if (expanded) {
+                    // 메뉴 닫기
+                    mobileMenu.classList.add('translate-x-full');
+                    toggleScrollLock();
+                } else {
+                    // 메뉴 열기
+                    setDynamicPadding();
+                    mobileMenu.classList.remove('translate-x-full');
+                    toggleScrollLock();
+                }
+            });
+
+            // 메뉴 외부 클릭 시 닫기
+            document.addEventListener('click', (event) => {
+                if (!mobileMenu.contains(event.target) && !mobileMenuButton.contains(event.target) && !mobileMenu.classList.contains('translate-x-full')) {
+                    mobileMenu.classList.add('translate-x-full');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                    toggleScrollLock();
+                }
+            });
+
+            // 화면 크기 변경 시 처리
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 900 && !mobileMenu.classList.contains('translate-x-full')) {
+                    mobileMenu.classList.add('translate-x-full');
+                    mobileMenuButton.setAttribute('aria-expanded', 'false');
+                    toggleScrollLock();
+                }
+            });
+
+            // 스크롤 시 동적 패딩 조절 (메뉴가 열려있지 않을 때만)
+            window.addEventListener('scroll', () => {
+                if (mobileMenu.classList.contains('translate-x-full')) {
+                    setDynamicPadding();
+                }
+            });
+
+            $(document).ready(function() {
+                let uploadInProgress = localStorage.getItem('uploadInProgress');
+                if (uploadInProgress === 'true') {
+                    $('#progress-container').removeClass('hidden');
+                    updateProgress();
+                }
+    
+                function updateProgress() {
+                    $.ajax({
+                        url: '/get_upload_progress/',
+                        method: 'GET',
+                        success: function(data) {
+                            let progress = data.progress;
+                            $('#progress-bar').css('width', progress + '%');
+                            $('#progress-text').text('Upload ' + progress + '%..');
+                            
+                            if (progress < 100) {
+                                setTimeout(updateProgress, 2000);  // 2초마다 업데이트
+                            } else {
+                                $('#progress-container').addClass('hidden');
+                                localStorage.removeItem('uploadInProgress');
+                            }
+                        },
+                        error: function() {
+                            console.log('Error fetching progress');
+                        }
+                    });
+                }
+            });
+        });
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3490dc',
+                    },
+                    screens: {
+                        'nav': '900px', // 새로운 breakpoint 추가
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        #mobile-menu {
+            transition: transform 0.1s ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+    <div class="min-h-full">
+        <nav class="bg-gray-800 dark:bg-gray-950">
+            <div class="mx-auto max-w-[1380px] px-4 sm:px-2 lg:px-1">
+                <div class="flex h-14 items-center justify-between">
+                    <div class="flex items-center">
+                        <a href="{% url 'photo_list' %}" class="flex-shrink-0">
+                            <span class="text-white text-xl font-bold">회기농장 포토</span>
+                        </a>
+                        <div class="hidden nav:block">
+                            <div class="ml-5 flex items-baseline space-x-1">
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'liked_photos' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">찜한 사진</a>
+                                    <a href="{% url 'my_photos' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">내 사진</a>
+                                    <a href="{% url 'upload_photo' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">업로드</a>
+                                {% else %}
+                                    <a href="{% url 'login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">찜한 사진</a>
+                                {% endif %}
+                                <a href="{% url 'convert_video' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">변환</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hidden nav:block">
+                        <div class="ml-2 flex items-center nav:ml-5">
+                            {% if user.id == 1 %}
+                                <a href="{% url 'admin_page' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">어드민</a>
+                            {% endif %}
+                            <a href="{% url 'notice_list' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">공지</a>
+                            {% if user.is_authenticated %}
+                                <button id="subscriptionModeToggle" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium ml-2 whitespace-nowrap">알림</button>
+                                <form method="post" action="{% url 'logout' %}" class="inline-block">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">로그아웃</button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap">로그인</a>
+                                <a href="{% url 'signup' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium ml-2 whitespace-nowrap">회원가입</a>
+                            {% endif %}
+                            <button id="darkModeToggle" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 rounded-md px-3 py-2 text-sm font-medium ml-2">☀️</button>
+                        </div>
+                    </div>
+                    <div class="-mr-2 flex nav:hidden">
+                        <!-- Mobile menu button -->
+                        <button type="button" class="relative inline-flex items-center justify-center rounded-md bg-gray-800 p-2 text-gray-400 hover:bg-gray-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-gray-800 dark:bg-gray-900 dark:hover:bg-gray-800 z-50" aria-controls="mobile-menu" aria-expanded="false">
+                            <span class="absolute -inset-0.5"></span>
+                            <span class="sr-only">Open main menu</span>
+                            <!-- Menu open: "hidden", Menu closed: "block" -->
+                            <svg class="block h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                            <!-- Menu open: "block", Menu closed: "hidden" -->
+                            <svg class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile menu, show/hide based on menu state. -->
+            <div class="nav:hidden fixed top-0 right-0 w-32 h-full bg-gray-800 dark:bg-gray-950 transform transition-transform duration-300 ease-in-out translate-x-full z-40" id="mobile-menu">
+                <div class="flex flex-col h-full justify-between" id="mobile-menu-content">
+                    <div class="flex flex-col divide-y divide-gray-700 overflow-y-auto">
+                        <!-- Main menu items -->
+                        <div>
+                            {% if user.is_authenticated %}
+                                <a href="{% url 'liked_photos' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">찜한 사진</a>
+                            {% else %}
+                                <a href="{% url 'login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">찜한 사진</a>
+                            {% endif %}
+                            <a href="{% url 'my_photos' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">내 사진</a>
+                            <a href="{% url 'upload_photo' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">업로드</a>
+                            <a href="{% url 'convert_video' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">변환</a>
+                        </div>
+
+                        <!-- Secondary menu items -->
+                        <div>
+                            {% if user.is_authenticated and user.id == 1 %}
+                                <a href="{% url 'admin_page' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">어드민</a>
+                            {% endif %}
+                            <a href="{% url 'notice_list' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">공지</a>
+                            {% if user.is_authenticated %}
+                                <button id="subscriptionModeToggle" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium w-full text-left">알림</button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Login/Logout section -->
+                        <div>
+                            {% if user.is_authenticated %}
+                                <form method="post" action="{% url 'logout' %}" class="block w-full">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium w-full text-left">로그아웃</button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'login' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">로그인</a>
+                                <a href="{% url 'signup' %}" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 block px-3 py-3 text-base font-medium">회원가입</a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Dark mode toggle -->
+                    <div class="flex justify-end border-t border-gray-700">
+                        <button id="darkModeToggle" class="text-gray-300 hover:bg-gray-700 hover:text-white dark:hover:bg-gray-800 px-3 py-3 text-base font-medium">☀️</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div id="progress-container" class="hidden absolute top-5 left-1/2 transform -translate-x-1/2 w-32 z-50 bg-white shadow-md rounded-lg overflow-hidden">
+            <div class="px-2 py-1.5">
+                <div class="w-full bg-gray-200 rounded-full h-1.5">
+                    <div id="progress-bar" class="bg-blue-600 h-1.5 rounded-full transition-all duration-300 ease-in-out" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="text-center text-[10px] mt-0.5 text-gray-600">Upload 0%..</p>
+            </div>
+        </div>
+
+        <main class="bg-gray-100 dark:bg-gray-800">
+            <div class="mx-auto max-w-[1380px] py-2 sm:px-1 lg:px-2">
+                {% block content %}
+                <!-- Your page content goes here -->
+                {% endblock %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

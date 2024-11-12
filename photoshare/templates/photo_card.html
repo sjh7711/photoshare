@@ -1,0 +1,76 @@
+<div id="photo-{{ photo.id }}" class="photo-item w-full bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden relative">
+    {% if request.path == '/my_photos/' and photo.is_pending != False and photo.is_pending != True %}
+    <div class="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 text-sm">
+        <a href="{{ photo.is_pending }}" class="text-white hover:underline">유사</a>
+    </div>
+    {% endif %}
+    {% if show_download_button %}
+        <a href="{{ photo.image.url }}" download class="block w-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-center py-1 text-sm hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-200">다운로드</a>
+    {% endif %}
+    <a href="{% url 'photo_detail' photo.id %}" class="block">
+        <img src="{{ photo.image.url }}" class="w-full h-auto object-cover" alt="Photo by {{ photo.uploaded_by.username }}">
+    </a>
+    <div class="p-2 relative">
+        <div class="flex justify-between">
+            <span class="text-sm text-gray-600 dark:text-gray-400 mr-2 whitespace-nowrap">{{ photo.uploaded }}</span>
+            <span class="text-sm text-gray-600 dark:text-gray-400 ml-2 whitespace-nowrap">{{ photo.file_size_mb|floatformat:1 }} MB</span>
+        </div>
+        {% if show_edit_description %}
+            <input type="hidden" name="des_photo_ids" value="{{ photo.id }}">
+            <textarea name="descriptions" class="w-full p-1 text-sm border rounded dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600" rows="1" oninput="autoResize(this)">{{ photo.description }}</textarea>
+        {% else %}
+            <p class="text-sm text-gray-600 dark:text-gray-400">업로더: {{ photo.uploaded_by.username }}</p>
+            {% if photo.description and photo.description != " " %}
+                <p class="text-sm mt-1">{{ photo.description }}</p>
+            {% endif %}
+        {% endif %}
+        <div class="flex items-center justify-between mt-1">
+            {% if user.is_authenticated %}
+                <div class="flex gap-2">
+                    <button class="like-button px-2 py-1 text-sm whitespace-nowrap rounded-md text-gray-700 dark:text-gray-300 {% if user in photo.liked_by.all %}bg-red-200 dark:bg-gray-700 {% else %}bg-gray-200 dark:bg-gray-700{% endif %}" data-photo-id="{{ photo.id }}">
+                        {% if user in photo.liked_by.all %}
+                            ❤️ {{ photo.likes }}
+                        {% else %}
+                            🤍 {{ photo.likes }}
+                        {% endif %}
+                    </button>
+                    {% if show_dislike_button %}
+                        <button class="dislike-button ml-1 px-1 py-1 text-sm rounded-md {% if user in photo.disliked_by.all %}bg-red-500 dark:bg-red-500{% else %}bg-gray-200 dark:bg-gray-700{% endif %}" data-photo-id="{{ photo.id }}" data-disliked="{% if user in photo.disliked_by.all %}true{% else %}false{% endif %}">
+                            {% if user in photo.disliked_by.all %}😡{% else %}🤔{% endif %}
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <a href="{% url 'login' %}" class="px-2 py-1 text-sm rounded-md bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300">🤍 {{ photo.likes }}</a>
+            {% endif %}
+            <div class="text-right">
+                <div class="flex flex-col">
+                    <div class="relative inline-block flex items-center justify-end">
+                        {% if request.path == '/my_photos/' and photo.dislikes > 0 %}
+                            <span class="text-sm text-red-500 dark:text-red-400 mr-1">😡 {{ photo.dislikes }}</span>
+                        {% endif %}
+                        <span class="comment-count text-sm {% if photo.comments_data or photo.liked_by.all|length > 0 %}cursor-pointer{% endif %}" {% if photo.comments_data or photo.liked_by.all|length > 0 %}onmouseover="showComments({{ photo.id }})" onmouseout="hideComments({{ photo.id }})"{% endif %}>💬 {{ photo.comment_count }}</span>
+                        {% if show_checkbox %}
+                            <input type="checkbox" name="photo_ids" value="{{ photo.id }}" class="photo-checkbox ml-2 w-4 h-4">
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% if photo.comments_data or photo.liked_by.all|length > 0 %}
+            <div id="comments-dropdown-{{ photo.id }}" class="comments-dropdown hidden absolute left-0.5 right-0.5 bottom-5 mb-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 shadow-lg rounded-md p-1 z-10">
+                <div class="text-sm text-left mb-1">
+                    ❤️ 
+                    {% for user in photo.liked_by.all %}
+                        {{ user.username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+                {% for comment in photo.comments_data %}
+                    <div class="text-sm text-left mb-1">
+                        <strong>{{ comment.user }}</strong>: {{ comment.text }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+</div>

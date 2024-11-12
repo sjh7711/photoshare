@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% block title %}사진{% endblock %}
+{% block content %}
+<div class="container mx-auto px-1 py-1">
+    <div class="max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+        <div class="p-1">
+            <div class="text-center mb-2">
+                <img src="{{ photo.image.url }}" alt="Uploaded photo" class="inline-block max-w-full h-auto max-h-[800px] object-contain">
+            </div>
+            <div class="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                <p>업로더: {{ photo.uploaded_by.username }}</p>
+                <p>{{ photo.uploaded_at|date:"Y.m.d H:i" }}</p>
+            </div>
+            <form id="description-form" class="flex items-start mb-2">
+                <input type="hidden" name="photo_ids" value="{{ photo.id }}">
+                <input type="text" name="descriptions" value="{{ photo.description }}" class="flex-grow p-2 border rounded-md dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600">
+                {% if user.is_authenticated %}
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 ml-1 rounded-md transition duration-150 ease-in-out">변경</button>
+                {% endif %}
+            </form>
+            <div class="flex justify-between items-center">
+                <div class="space-x-2">
+                    {% if user.is_authenticated %}
+                        <button class="like-button {% if user in photo.liked_by.all %}bg-red-200 dark:bg-gray-700 {% else %}bg-gray-200 dark:bg-gray-700{% endif %} text-gray-700 dark:text-gray-300 font-bold py-1 px-2 rounded transition duration-150 ease-in-out" data-photo-id="{{ photo.id }}">
+                            {% if user in photo.liked_by.all %}
+                                ❤️ {{ photo.likes }}
+                            {% else %}
+                                🤍 {{ photo.likes }}
+                            {% endif %}
+                        </button>
+                        <button class="dislike-button {% if user in photo.disliked_by.all %}bg-red-500 dark:bg-red-500{% else %}bg-gray-200 dark:bg-gray-700{% endif %} py-1 px-2 rounded transition duration-150 ease-in-out" data-photo-id="{{ photo.id }}" data-disliked="{% if user in photo.disliked_by.all %}true{% else %}false{% endif %}">
+                            {% if user in photo.disliked_by.all %}😡{% else %}🤔{% endif %}
+                        </button>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="bg-gray-200 dark:bg-gray-700 text-white font-bold py-1 px-2 rounded transition duration-150 ease-in-out">🤍 {{ photo.likes }}</a>
+                    {% endif %}
+                </div>
+                <div class="space-x-2">
+                    <a href="{{ photo.image.url }}" download class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded transition duration-150 ease-in-out">⬇️</a>
+                    {% if user.is_authenticated and user == photo.uploaded_by or user.id == 1 %}
+                        <button type="button" class="delete-photo-btn bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded transition duration-150 ease-in-out" data-photo-id="{{ photo.id }}">삭제</button>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-md">
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    ❤️ 
+                    {% for user in photo.liked_by.all %}
+                        {{ user.username }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </p>
+            </div>
+        </div>
+        
+        <div class="p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+            <h5 class="text-lg font-bold mb-2">댓글</h5>
+            {% if user.is_authenticated %}
+            <form method="post" action="{% url 'add_comment' photo.id %}" class="comment-form mb-4">
+                {% csrf_token %}
+                <div class="flex items-start">
+                    <textarea name="text" class="flex-grow p-1 border rounded-md dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600" rows="2" oninput="autoResize(this)"></textarea>
+                    <input type="hidden" name="parent" value="">
+                    <button type="submit" class="ml-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded-md transition duration-150 ease-in-out">등록</button>
+                </div>
+            </form>
+            {% else %}
+                <p class="mb-4 text-gray-600 dark:text-gray-400">댓글을 작성하려면 <a href="{% url 'login' %}" class="text-blue-500 hover:text-blue-600">로그인</a>하세요</p>
+            {% endif %}
+            <div class="space-y-4 comments">
+                {% for comment in comments %}
+                    {% include 'comment.html' with comment=comment %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('form.comment-form').on('submit', function(event) {
+            event.preventDefault();
+            var form = $(this);
+            $.ajax({
+                type: 'POST',
+                url: form.attr('action'),
+                data: form.serialize(),
+                success: function(response) {
+                    if (response.success) {
+                        var newComment = $(response.comment_html);
+                        var parent_id = form.find('input[name="parent"]').val();
+                        if (parent_id) {
+                            $('#comment-' + parent_id).append(newComment);
+                            toggleReplyForm(parent_id);
+                        } else {
+                            $('.comments').append(newComment);
+                            document.querySelector('textarea[name="text"]').value = '';
+                        }
+                        form[0].reset();
+                    }
+                }
+            });
+        });
+    });
+
+    function deleteComment(commentId) {
+        if (confirm("댓글을 삭제하시겠습니까?")) {
+            fetch(`/delete_comment/${commentId}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`comment-${commentId}`).querySelector('p').innerText = "<삭제된 메세지 입니다>";
+                } else {
+                    alert("댓글 삭제에 실패했습니다.");
+                }
+            });
+        }
+    }
+
+    function updateDescription(event) {
+        event.preventDefault();
+        const descriptionInput = document.querySelector('input[name="descriptions"]');
+        const description = descriptionInput.value;
+        const photoId = {{ photo.id }};
+        
+        fetch(`/update_description/${photoId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ description: description })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('태그 변경 성공');
+            } else {
+                alert('기존 태그를 포함해야합니다');
+            }
+        })
+    }
+
+    function handleLikeButtonClick() {
+        document.querySelectorAll('.like-button').forEach(button => {
+            button.addEventListener('click', function() {
+                event.preventDefault();
+                const photoId = this.getAttribute('data-photo-id');
+                fetch(`{% url 'like_photo' 0 %}`.replace('0', photoId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ photo_id: photoId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.innerHTML = data.liked ? `❤️ ${data.likes}` : `🤍 ${data.likes}`;
+                        button.classList.toggle('bg-red-200', data.liked);
+                        button.classList.toggle('bg-gray-200', !data.liked);
+
+                        const likedByList = document.querySelector('.bg-gray-100.dark\\:bg-gray-700 p');
+                        let likedByText = '❤️ ';
+
+                        data.liked_by.forEach((user, index) => {
+                            likedByText += user.username;
+                            if (index < data.liked_by.length - 1) {
+                                likedByText += ', ';
+                            }
+                        });
+
+                        likedByList.textContent = likedByText;
+                    }
+                })
+            });
+        });
+    }
+
+    function handleDislikeButtonClick() {
+        document.querySelectorAll('.dislike-button').forEach(function(button) {
+            button.addEventListener('click', function() {
+                event.preventDefault();
+                const photoId = this.getAttribute('data-photo-id');
+                const disliked = this.getAttribute('data-disliked') === 'true';
+                const previousPage = '{{ referer }}';
+
+                if (!disliked) {
+                    const confirmDislike = confirm('정말 싫어요를 누르시겠습니까? 일정 수를 넘으면 사진이 삭제됩니다.');
+                    if (!confirmDislike) {
+                        return;
+                    }
+                }
+
+                fetch(`/dislike_photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const button = document.querySelector(`.dislike-button[data-photo-id="${photoId}"]`);
+                        if (data.hideContent) {
+                            window.location.href = previousPage;
+                        } else {
+                            if (data.disliked) {
+                                button.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+                                button.classList.add('bg-red-500', 'dark:bg-red-500');
+                                button.innerHTML = `😡`;
+                                button.setAttribute('data-disliked', 'true');
+                            } else {
+                                button.classList.remove('bg-red-500', 'dark:bg-red-500');
+                                button.classList.add('bg-gray-200', 'dark:bg-gray-700',);
+                                button.innerHTML = `🤔`;
+                                button.setAttribute('data-disliked', 'false');
+                            }
+                        }
+                    }
+                });
+            });
+        });
+    }
+
+    function initDeletePhotoButtons() {
+        document.querySelectorAll('.delete-photo-btn').forEach(function(button) {
+            button.addEventListener('click', function() {
+                if (confirm('사진을 삭제하시겠습니까?')) {
+                    const photoId = this.getAttribute('data-photo-id');
+                    const csrfToken = '{{ csrf_token }}';
+                    const previousPage = '{{ referer }}';
+
+                    fetch(`/photo/${photoId}/delete/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            previous_page: previousPage
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            window.location.href = previousPage;
+                        } else {
+                            alert('삭제 실패');
+                        }
+                    });
+                }
+            });
+        });
+    }
+
+    function initAutoResizeTextareas() {
+        document.querySelectorAll('textarea').forEach(textarea => {
+            autoResize(textarea);
+        });
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
+
+    function toggleReplyForm(commentId) {
+        var replyForm = document.getElementById('reply-form-' + commentId);
+        if (replyForm.classList.contains('hidden')) {
+            replyForm.classList.remove('hidden');
+            scrollToBottomIfNeeded(replyForm);
+        } else {
+            replyForm.classList.add('hidden');
+        }
+    }
+
+    function scrollToBottomIfNeeded(element) {
+        var elementBottom = element.getBoundingClientRect().bottom;
+        var viewportHeight = window.innerHeight;
+        if (elementBottom > viewportHeight) {
+            window.scrollTo({
+                top: window.scrollY + 100,
+                behavior: 'smooth'
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        handleLikeButtonClick();
+        handleDislikeButtonClick();
+        initDeletePhotoButtons();
+        initAutoResizeTextareas();
+
+        const updateButton = document.querySelector('#description-form button[type="submit"]');
+        if (updateButton) {
+            updateButton.addEventListener('click', updateDescription);
+        }
+    });
+</script>
+{% endblock %}

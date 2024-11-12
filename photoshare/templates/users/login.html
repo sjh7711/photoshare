@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="bg-gray-100 dark:bg-gray-800 py-6 flex flex-col justify-center sm:py-12">
+    <div class="relative py-3 sm:max-w-xl sm:mx-auto">
+        <div class="relative px-4 py-10 bg-white dark:bg-gray-900 shadow-lg sm:rounded-3xl sm:p-20">
+            <div class="max-w-md mx-auto">
+                <div class="text-center">
+                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100 mb-4">회기농장 배급소</h1>
+                </div>
+                <div id="error-container" class="mb-4 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md" role="alert" style="display: none;"></div>
+                <form method="post" action="{% url 'login' %}" class="space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">이름</label>
+                        <input type="text" name="username" id="username" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호</label>
+                        <input type="password" name="password" id="password" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    </div>
+                    {% if terms_required %}
+                        <div class="space-y-2">
+                            <p class="text-sm text-gray-700 dark:text-gray-300">기존 업로드한 사진, 작성한 댓글 등 사이트에 게시한 모든 글에 대한 책임은 작성자 본인에게 있습니다. 원하지 않을 시 관리자에게 문의하여 모든 기록을 삭제할 수 있습니다.</p>
+                            <div class="flex items-center">
+                                <input type="checkbox" name="terms" id="terms" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <label for="terms" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">약관에 동의합니다</label>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">로그인</button>
+                    </div>
+                </form>
+                <div class="mt-6 text-center">
+                    <a href="{% url 'reset_password' %}" class="text-sm text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">비밀번호를 잊으셨나요?</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const usernameInput = document.getElementById('username');
+        const errorContainer = document.getElementById('error-container');
+        const csrfTokenInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    
+        // CSRF 토큰 갱신 함수
+        function refreshCSRFToken() {
+            fetch('{% url "login" %}', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                csrfTokenInput.value = data.csrfToken;
+            })
+            .catch(error => console.error('CSRF token refresh failed:', error));
+        }
+    
+        // 페이지 로드 시 저장된 사용자 이름 복원 및 CSRF 토큰 갱신
+        if (localStorage.getItem('savedUsername')) {
+            usernameInput.value = localStorage.getItem('savedUsername');
+            localStorage.removeItem('savedUsername');
+        }
+        refreshCSRFToken();
+    
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+    
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfTokenInput.value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirectUrl;
+                } else if (data.error) {
+                    errorContainer.textContent = data.error;
+                    errorContainer.style.display = 'block';
+                    if (data.csrfToken) {
+                        csrfTokenInput.value = data.csrfToken;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Login error:', error);
+                errorContainer.textContent = '로그인 중 오류가 발생했습니다. 나중에 다시 시도해주세요.';
+                errorContainer.style.display = 'block';
+                refreshCSRFToken();
+            });
+        });
+    
+        // 30분마다 CSRF 토큰 갱신
+        setInterval(refreshCSRFToken, 30 * 60 * 1000);
+    });
+</script>
+{% endblock %}

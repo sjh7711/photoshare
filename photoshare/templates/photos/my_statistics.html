@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}통계{% endblock %}
+
+{% block content %}
+<div class="container min-h-screen mx-auto px-1 py-1">
+    <h4 class="text-2xl font-bold mb-4">
+        <a href="{% url 'my_statistics' %}" class="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300">통계</a>
+    </h4>
+    <div class="overflow-x-auto bg-white dark:bg-gray-800 shadow-md rounded-lg mb-4">
+        <table class="min-w-full table-auto">
+            <thead class="bg-gray-200 dark:bg-gray-700">
+                <tr>
+                    <th class="px-1 py-1 cursor-pointer whitespace-nowrap text-center text-gray-700 dark:text-gray-300" onclick="sortTable(0)">닉네임</th>
+                    <th class="px-1 py-1 cursor-pointer whitespace-nowrap text-center text-gray-700 dark:text-gray-300" onclick="sortTable(1)">🔽❤️</th>
+                    <th class="px-1 py-1 cursor-pointer whitespace-nowrap text-center text-gray-700 dark:text-gray-300" onclick="sortTable(2)">🔼❤️</th>
+                    <th class="px-1 py-1 cursor-pointer whitespace-nowrap text-center text-gray-700 dark:text-gray-300" onclick="sortTable(3)">🔽댓글</th>
+                    <th class="px-1 py-1 cursor-pointer whitespace-nowrap text-center text-gray-700 dark:text-gray-300" onclick="sortTable(4)">🔼댓글</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in relation_users %}
+                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <td class="px-1 py-1 text-center text-gray-700 dark:text-gray-300" data-username="{{ user.username }}" data-user-id="{{ user.id }}">{{ user.username }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ user.receive_like_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ user.send_like_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ user.receive_comment_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ user.send_comment_count }}</td>
+                </tr>
+                {% endfor %}
+                <tr id="totals-row" class="bg-gray-100 dark:bg-gray-700">
+                    <td class="px-1 py-1 text-center font-bold text-gray-800 dark:text-gray-200">합계</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ totals.total_receive_like_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ totals.total_send_like_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ totals.total_receive_comment_count }}</td>
+                    <td class="px-1 py-1 text-center text-gray-600 dark:text-gray-400">{{ totals.total_send_comment_count }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">위 표의 닉네임을 클릭하여 개인 내역 확인 가능(최대 20개)</p>
+    <div class="flex flex-row gap-1 overflow-x-auto min-w-[300px]">
+        <div class="w-1/2 min-w-[150px] bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+            <h5 id="liked-photos-header" class="text-xs md:text-sm text-center font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 py-1 whitespace-nowrap">받은 ❤️</h5>
+            <div class="overflow-x-auto">
+                <table id="liked-photos" class="w-full table-fixed">
+                    <thead class="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th class="w-[60px] px-1 py-1 text-center text-xs text-gray-700 dark:text-gray-300">사진</th>
+                            <th class="w-[70px] px-1 py-1 text-center text-xs text-gray-700 dark:text-gray-300">❤️</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for photo in liked_photos %}
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <td class="px-1 py-1 text-center">
+                                <a href="{% url 'photo_detail' photo.photo_id %}" class="inline-block">
+                                    <img src="{{ photo.photo_url }}" class="w-[60px] h-[60px] object-cover mx-auto">
+                                </a>
+                            </td>
+                            <td class="px-1 py-1 text-center text-xs md:text-sm text-gray-600 dark:text-gray-400 break-words">
+                                {% for username in photo.liked_by %}
+                                    {{ username }}{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="w-1/2 min-w-[150px] bg-white dark:bg-gray-800 shadow-md rounded-lg overflow-hidden">
+            <h5 id="like-photos-header" class="text-xs md:text-sm text-center font-semibold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-1 py-1 whitespace-nowrap">보낸 ❤️</h5>
+            <div class="overflow-x-auto">
+                <table id="like-photos" class="w-full table-fixed">
+                    <thead class="bg-gray-100 dark:bg-gray-700">
+                        <tr>
+                            <th class="w-[60px] px-1 py-1 text-center text-xs text-gray-700 dark:text-gray-300">사진</th>
+                            <th class="w-[70px] px-1 py-1 text-center text-xs text-gray-700 dark:text-gray-300">❤️</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for photo in like_photos %}
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <td class="px-1 py-1 text-center">
+                                <a href="{% url 'photo_detail' photo.photo_id %}" class="inline-block">
+                                    <img src="{{ photo.photo_url }}" class="w-[60px] h-[60px] object-cover mx-auto">
+                                </a>
+                            </td>
+                            <td class="px-1 py-1 text-center text-xs md:text-sm text-gray-600 dark:text-gray-400 break-words">
+                                {% for username in photo.liked_by %}
+                                    {{ username }}{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('td[data-username]').forEach(function(td) {
+            td.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                const username = this.dataset.username;
+                fetch(`/common_user_activity/${userId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const likePhotosTable = document.querySelector('#like-photos tbody');
+                    const likedPhotosTable = document.querySelector('#liked-photos tbody');
+                    const likedPhotosHeader = document.querySelector('#liked-photos-header');
+                    const likePhotosHeader = document.querySelector('#like-photos-header');
+    
+                    // Update headers
+                    likedPhotosHeader.textContent = `From ${username} ❤️`;
+                    likePhotosHeader.textContent = `To ${username} ❤️`;
+    
+                    likedPhotosTable.innerHTML = '';
+                    data.liked_photos.forEach(photo => {
+                        likedPhotosTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="px-1 py-1 text-center">
+                                    <a href="/photo/${photo.photo_id}/" class="inline-block">
+                                        <img src="${photo.photo_url}" alt="${photo.photo_description}" class="w-[60px] h-[60px] object-cover mx-auto">
+                                    </a>
+                                </td>
+                                <td class="px-1 py-1 text-left text-xs md:text-sm text-gray-600 dark:text-gray-400 break-words">
+                                    ${photo.liked_by.join(', ')}
+                                </td>
+                            </tr>
+                        `;
+                    });
+    
+                    likePhotosTable.innerHTML = '';
+                    data.like_photos.forEach(photo => {
+                        likePhotosTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="px-1 py-1 text-center">
+                                    <a href="/photo/${photo.photo_id}/" class="inline-block">
+                                        <img src="${photo.photo_url}" alt="${photo.photo_description}" class="w-[60px] h-[60px] object-cover mx-auto">
+                                    </a>
+                                </td>
+                                <td class="px-1 py-1 text-left text-xs md:text-sm text-gray-600 dark:text-gray-400 break-words">
+                                    ${photo.liked_by.join(', ')}
+                                </td>
+                            </tr>
+                        `;
+                    });
+    
+                    const photosContainer = document.querySelector('.flex.flex-row.gap-1.overflow-x-auto.min-w-\\[300px\\]');
+                    window.scrollTo({ top: photosContainer.offsetTop, behavior: 'smooth' });
+                });
+            });
+        });
+    });
+    
+    function sortTable(columnIndex) {
+        const table = document.querySelector("table tbody");
+        const rows = Array.from(table.querySelectorAll("tr:not(#totals-row)"));
+        const totalsRow = document.querySelector("#totals-row");
+        const isAscending = table.getAttribute("data-sort-order") === "asc";
+        const newOrder = isAscending ? "desc" : "asc";
+    
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.cells[columnIndex].innerText;
+            const cellB = rowB.cells[columnIndex].innerText;
+    
+            if (!isNaN(cellA) && !isNaN(cellB)) {
+                return isAscending ? cellA - cellB : cellB - cellA;
+            }
+    
+            return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+        });
+    
+        table.innerHTML = "";
+        rows.forEach(row => table.appendChild(row));
+        table.setAttribute("data-sort-order", newOrder);
+        table.appendChild(totalsRow);
+    }
+</script>
+{% endblock %}

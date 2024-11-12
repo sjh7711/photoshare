@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}회원가입{% endblock %}
+{% block content %}
+<div class="bg-gray-100 dark:bg-gray-900 py-6 flex flex-col justify-center sm:py-12">
+    <div class="relative py-3 sm:max-w-xl sm:mx-auto">
+        <div class="relative px-4 py-10 bg-white dark:bg-gray-800 shadow-lg sm:rounded-3xl sm:p-20">
+            <div class="max-w-md mx-auto">
+                <div class="text-center">
+                    <h1 class="text-2xl font-semibold text-gray-900 dark:text-gray-100">계정 생성</h1>
+                </div>
+                <form method="post" action="{% url 'signup' %}" class="mt-8 space-y-6">
+                    {% csrf_token %}
+                    <div class="space-y-4">
+                        <div>
+                            <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">사용자 이름</label>
+                            <input type="text" name="username" id="username" value="{{ form.username.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.username.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.username.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="phone" class="block text-sm font-medium text-gray-700 dark:text-gray-300">전화번호</label>
+                            <input type="text" name="phone" id="phone" value="{{ form.phone.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.phone.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.phone.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="security_question" class="block text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 초기화 시 답할 질문</label>
+                            <input type="text" name="security_question" id="security_question" value="{{ form.security_question.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.security_question.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.security_question.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="security_answer" class="block text-sm font-medium text-gray-700 dark:text-gray-300">답</label>
+                            <input type="text" name="security_answer" id="security_answer" value="{{ form.security_answer.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.security_answer.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.security_answer.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="password1" class="block text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호</label>
+                            <input type="password" name="password1" id="password1" value="{{ form.password1.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.password1.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.password1.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="password2" class="block text-sm font-medium text-gray-700 dark:text-gray-300">비밀번호 확인</label>
+                            <input type="password" name="password2" id="password2" value="{{ form.password2.value|default_if_none:'' }}" class="mt-1 px-2 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            {% if form.password2.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.password2.errors }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-700 dark:text-gray-300">업로드한 사진, 작성한 댓글 등 사이트에 게시한 모든 글에 대한 책임은 작성자 본인에게 있습니다. 공지페이지에서 사이트 이용가이드를 읽어보는 것을 권장합니다.</p>
+                            <div class="flex items-center mt-2">
+                                <input type="checkbox" name="terms" id="terms" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <label for="terms" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">약관에 동의합니다</label>
+                            </div>
+                            {% if form.terms.errors %}
+                                <p class="mt-2 text-sm text-red-600 dark:text-red-400">{{ form.terms.errors }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">생성하기</button>
+                    </div>
+                </form>
+                {% if errors %}
+                    <div class="mt-4 p-4 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md">
+                        <ul class="list-disc list-inside">
+                            {% for field, error_list in errors.items %}
+                                {% for error in error_list %}
+                                    <li>{{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

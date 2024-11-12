@@ -1,0 +1,541 @@
+{% extends 'base.html' %}
+{% block title %}회기농장 배급소{% endblock %}
+{% block content %}
+<div class="container mx-auto mt-1 px-1 max-w-[1380px]">
+    {% if request.path == '/liked_photos/' %}
+        <div class="flex justify-between items-center mb-2">
+            <h4 class="text-xl font-bold">
+                <a href="{% url 'liked_photos' %}" class="no-underline text-inherit">❤️ [{{ lenphotos }}개]</a>
+            </h4>
+            <div>
+                <a href="{% url 'download_liked_photos' %}?{% if 'search_type' in request.GET %}search_type={{ request.GET.search_type }}{% endif %}&{% if 'query' in request.GET %}query={{ request.GET.query }}{% endif %}" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2 whitespace-nowrap">전체 ⬇️</a>
+                <button id="download-selected" class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 whitespace-nowrap">선택 ⬇️</button>
+            </div>
+        </div>
+        <div class="w-full mb-2">
+            <form method="GET" action="{% url 'liked_photos' %}" class="flex justify-end">
+                <div class="w-[220px]">
+                    {% include 'search_form.html' with hide_uploader=False %}
+                </div>
+            </form>
+        </div>
+    {% elif request.path == '/my_photos/' %}
+        <div class="flex justify-between items-center mb-2">
+            <h4 class="text-xl font-bold">
+                <a href="{% url 'my_photos' %}" class="no-underline text-inherit">내 사진 [{{ lenphotos }}개]</a>
+            </h4>
+        </div>
+        <div class="flex justify-end w-full mb-2">
+            <div class="flex flex-col items-center mr-1">
+                <a href="{% url 'edit_profile' %}" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 mb-2 whitespace-nowrap">정보</a>
+                <a href="{% url 'my_statistics' %}" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 whitespace-nowrap">통계</a>
+            </div>
+            <form method="GET" action="{% url 'my_photos' %}" class="flex flex-nowrap w-full justify-end">
+                <div class="w-[220px]">
+                    {% include 'search_form.html' with hide_uploader=True %}
+                </div>
+            </form>
+        </div>
+        <hr class="my-2">
+        <div class="flex justify-between items-center mb-2">
+            <div class="flex items-center">
+                <a href="{% url 'my_comments' %}" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 mr-2 whitespace-nowrap">댓글</a>
+                <a href="{% url 'my_notifications' %}" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 whitespace-nowrap">알림</a>
+            </div>
+            <div class="flex items-center">
+                <button type="button" class="update-descriptions-btn px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2 whitespace-nowrap" formaction="{% url 'update_descriptions' %}">태그</button>
+                <div class="select-all flex items-center">
+                    <button type="button" id="delete-selected" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 mr-4 whitespace-nowrap">삭제</button>
+                    <input type="checkbox" id="select-all" class="photo-checkbox w-6 h-6">
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="flex justify-between items-start w-full mb-2">
+            {% if user.is_authenticated %}
+                <div id="visitorContainer" class="visitor-container mr-2 flex-shrink-0 overflow-hidden">
+                    <h6 class="text-sm font-semibold mb-1">접속자</h6>
+                    <hr class="my-1" style="width: 45px;">
+                    <div class="max-w-full overflow-x-auto scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
+                        <p class="text-sm whitespace-nowrap">
+                            {% if active_users %}
+                                {% for user in active_users %}
+                                    {{ user }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            {% endif %}
+            <form method="GET" action="{% url 'photo_list' %}" class="flex flex-nowrap w-full justify-end">
+                <div class="w-[220px]">
+                    {% include 'search_form.html' with hide_uploader=False %}
+                </div>
+            </form>
+        </div>
+    {% endif %}
+    {% include 'pagination_and_sort.html' %}
+    {% if request.path == '/my_photos/' %}
+        <form id="photo-form" method="post" action="{% url 'delete_photos' %}" class="update-descriptions-form">
+        {% csrf_token %}
+    {% endif %}
+    <div id="photo-display-area" class="flex flex-wrap justify-center gap-2 max-w-[1380px] mx-auto">
+        {% for photo in photos %}
+            <div class="photo-card flex-grow-0 flex-shrink-0 w-auto max-w-[325px]">
+                {% if request.path == '/liked_photos/' %}
+                    {% include 'photo_card.html' with show_dislike_button=False show_download_button=True show_checkbox=True show_edit_description=False %}
+                {% elif request.path == '/my_photos/' %}
+                    {% include 'photo_card.html' with show_dislike_button=False show_download_button=False show_checkbox=True show_edit_description=True %}
+                {% else %}
+                    {% include 'photo_card.html' with show_dislike_button=True show_download_button=False show_checkbox=False show_edit_description=False %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    <div id="loading-indicator" class="hidden text-center py-4">
+        <p>사진 로딩 중...</p>
+    </div>
+    {% if request.path == '/my_photos/' %}
+    </form>
+    {% endif %}
+</div>
+
+<script>
+    function adjustVisitorContainerWidth() {
+        const visitorContainer = document.getElementById('visitorContainer');
+        if (!visitorContainer) return;
+    
+        const windowWidth = window.innerWidth;
+        const formMinWidth = 200; // 폼의 최소 너비 (예상치)
+        const padding = 15; // 여유 공간
+    
+        // visitor-container의 최대 너비 계산
+        const maxWidth = windowWidth - formMinWidth - padding;
+    
+        // 스타일 적용
+        visitorContainer.style.maxWidth = `${maxWidth}px`;
+        visitorContainer.style.width = 'max-content';
+    }
+
+    adjustVisitorContainerWidth();
+    addEventListener('resize', adjustVisitorContainerWidth);
+
+    const maxPhotosPerRowSelect = document.getElementById('max-photos-per-row');
+    const photoDisplayArea = document.getElementById('photo-display-area');
+
+    function isMobile() {
+        return window.innerWidth <= 450; // 768px 이하를 모바일로 간주
+    }
+
+    function setDefaultMaxPhotosPerRow() {
+        const screenWidth = window.innerWidth;
+        let defaultMaxPhotosPerRow;
+
+        if (screenWidth >= 1100) {
+            defaultMaxPhotosPerRow = 5;
+        } else if (screenWidth >= 800) {
+            defaultMaxPhotosPerRow = 4;
+        } else if (screenWidth >= 500) {
+            defaultMaxPhotosPerRow = 3;
+        } else {
+            defaultMaxPhotosPerRow = 2;
+        }
+
+        maxPhotosPerRowSelect.value = defaultMaxPhotosPerRow;
+    }
+
+    window.addEventListener('resize', function() {
+        if (!isMobile()) {
+            setDefaultMaxPhotosPerRow();
+            updatePhotoCardWidth();
+        }
+    });
+
+    function loadMaxPhotosPerRowFromLocalStorage() {
+        const storedValue = localStorage.getItem('maxPhotosPerRow');
+        if (storedValue) {
+            maxPhotosPerRowSelect.value = storedValue;
+        } else {
+            setDefaultMaxPhotosPerRow();
+        }
+    }
+
+    function updatePhotoCardWidth() {
+        const maxPhotosPerRow = parseInt(maxPhotosPerRowSelect.value);
+        const containerWidth = photoDisplayArea.clientWidth;
+        const photoCardWidth = containerWidth / maxPhotosPerRow - 8; // gap 고려
+        const photoCards = document.querySelectorAll('.photo-card');
+
+        photoCards.forEach(item => {
+            item.style.maxWidth = `${photoCardWidth}px`;
+        });
+    }
+
+    maxPhotosPerRowSelect.addEventListener('change', function() {
+        if (isMobile()) {
+            localStorage.setItem('maxPhotosPerRow', maxPhotosPerRowSelect.value);
+        }
+        updatePhotoCardWidth();
+    });
+
+    // 초기 로드 시 설정
+    if (isMobile()) {
+        loadMaxPhotosPerRowFromLocalStorage();
+    } else {
+        setDefaultMaxPhotosPerRow();
+    }
+    updatePhotoCardWidth();
+
+    let page = 1;
+    let hasNext = {{ has_next|yesno:"true,false" }};
+    let isLoading = false;
+    let scrollTimeout;
+
+    function debounce(func, wait) {
+        return function executedFunction(...args) {
+            const later = () => {
+                scrollTimeout = null;
+                func(...args);
+            };
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(later, wait);
+        };
+    }
+
+    window.addEventListener('scroll', debounce(function() {
+        if ((window.innerHeight + window.scrollY) >= (document.documentElement.scrollHeight - 200) && hasNext && !isLoading) {
+            loadMoreItems();
+        }
+    }, 100));
+
+    async function loadMoreItems() {
+        if (isLoading) return;
+        isLoading = true;
+
+        const loadingIndicator = document.getElementById('loading-indicator');
+        loadingIndicator.classList.remove('hidden');
+        
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('page', page + 1);
+
+            const response = await fetch(`?${urlParams.toString()}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            
+            if (data.photos && data.photos.length > 0) {
+                const container = document.querySelector('#photo-display-area');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.photos;
+
+                const newItems = Array.from(tempDiv.children);
+                const imageLoadPromises = newItems.map(item => {
+                    return new Promise(resolve => {
+                        const img = item.querySelector('img');
+                        if (img && !img.complete) {
+                            img.onload = resolve;
+                            img.onerror = resolve;
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+
+                newItems.forEach(item => {
+                    const wrapperDiv = document.createElement('div');
+                    wrapperDiv.classList.add('photo-card', 'flex-grow-0', 'flex-shrink-0', 'w-auto', 'max-w-[325px]');
+                    
+                    const photoItem = item.querySelector('.photo-item');
+                    if (photoItem) {
+                        photoItem.classList.add('flex-grow-0', 'flex-shrink-0', 'w-auto', 'max-w-[325px]');
+                    }
+                    
+                    wrapperDiv.appendChild(item);
+                    container.appendChild(wrapperDiv);
+                });
+
+                updatePhotoCardWidth();
+
+                await Promise.all(imageLoadPromises);
+
+                page += 1;
+                hasNext = data.has_next;
+            } else {
+                hasNext = false;
+            }
+            loadingIndicator.classList.add('hidden');
+        } catch (error) {
+            console.error('Error loading more items:', error);
+            hasNext = false;
+            loadingIndicator.classList.add('hidden');
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    document.body.addEventListener('click', async function(event) {
+        if (event.target.closest('.like-button')) {
+            event.preventDefault();
+            const button = event.target.closest('.like-button');
+            const photoId = button.getAttribute('data-photo-id');
+            try {
+                const response = await fetch(`{% url 'like_photo' 0 %}`.replace('0', photoId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ photo_id: photoId })
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                if (data.success) {
+                    button.innerHTML = data.liked ? `❤️ ${data.likes}` : `🤍 ${data.likes}`;
+                    button.classList.toggle('bg-red-200', data.liked);
+                    button.classList.toggle('bg-gray-200', !data.liked);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    });
+
+    document.body.addEventListener('click', async function(event) {
+        if (event.target.closest('.dislike-button')) {
+            const button = event.target.closest('.dislike-button');
+            const photoId = button.getAttribute('data-photo-id');
+            const disliked = button.getAttribute('data-disliked') === 'true';
+
+            if (!disliked) {
+                const confirmDislike = confirm('정말 싫어요를 누르시겠습니까? 일정 수를 넘으면 사진이 삭제됩니다.');
+                if (!confirmDislike) {
+                    return;
+                }
+            }
+
+            try {
+                const response = await fetch(`/dislike_photo/${photoId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                });
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                if (data.success) {
+                    if (data.hideContent) {
+                        const photoElement = document.getElementById(`photo-${photoId}`);
+                        if (photoElement) {
+                            photoElement.remove();
+                        }
+                    } else {
+                        if (data.disliked) {
+                            button.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+                            button.classList.add('bg-red-500', 'dark:bg-red-500');
+                            button.innerHTML = `😡`;
+                            button.setAttribute('data-disliked', 'true');
+                        } else {
+                            button.classList.remove('bg-red-500', 'dark:bg-red-500');
+                            button.classList.add('bg-gray-200', 'dark:bg-gray-700',);
+                            button.innerHTML = `🤔`;
+                            button.setAttribute('data-disliked', 'false');
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+    });
+
+    function showComments(photoId) {
+        const dropdown = document.getElementById(`comments-dropdown-${photoId}`);
+        dropdown.classList.remove('hidden');
+    }
+
+    function hideComments(photoId) {
+        const dropdown = document.getElementById(`comments-dropdown-${photoId}`);
+        dropdown.classList.add('hidden');
+    }
+
+    function handleYesterdayButtonClick() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const formattedDate = yesterday.getFullYear() + "-" + (yesterday.getMonth() + 1) + "-" + yesterday.getDate();
+        urlParams.set('date', formattedDate);
+        window.location.search = urlParams.toString();
+    }
+
+    function handleDownloadSelected() {
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        if (checkboxes.length === 0) {
+            alert('사진을 하나 이상 선택하세요.');
+        } else {
+            checkboxes.forEach(function (checkbox) {
+                const link = document.createElement('a');
+                link.href = checkbox.closest('.photo-item').querySelector('a[download]').href;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+    }
+
+    function handleSelectAll(event) {
+        const checkboxes = document.querySelectorAll('.photo-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = event.target.checked;
+        });
+    }
+
+    function handleUpdateDescriptions(event) {
+        event.preventDefault();
+        if (confirm("수정한 모든 태그를 반영하시겠습니까?")) {
+            const form = document.querySelector('.update-descriptions-form');
+            form.action = event.target.getAttribute('formaction');
+            form.submit();
+        }
+    }
+
+    function handleDeleteSelected() {
+        const checkboxes = document.querySelectorAll('.photo-checkbox:checked');
+        const ids = Array.from(checkboxes)
+            .filter(cb => cb.id !== 'select-all')
+            .map(cb => cb.value);
+
+        if (ids.length > 0) {
+            const message = ids.length + "개의 파일을 삭제하시겠습니까?";
+            if (confirm(message)) {
+                const form = document.getElementById('photo-form');
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'photos';
+                input.value = ids.join(',');
+                form.appendChild(input);
+                form.submit();
+            }
+        } else {
+            alert('삭제할 사진을 선택하세요.');
+        }
+    }
+
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight+2) + 'px';
+    }
+
+    const currentPath = window.location.pathname;
+    document.querySelector('.flex.flex-wrap').addEventListener('click', function (event) {
+        const target = event.target;
+        if (target.closest('.like-button')) {
+            handleLikeButtonClick(event);
+        } else if (target.closest('.dislike-button')) {
+            handleDislikeButtonClick(event);
+        } else if (target.closest('.photo-item') && ((currentPath == '/liked_photos/') || (currentPath == '/my_photos/'))) {
+            const photoItem = target.closest('.photo-item');
+            if (!target.closest('.like-button') && !target.closest('img') && target.tagName !== 'TEXTAREA') {
+                const checkbox = photoItem.querySelector('.photo-checkbox');
+                checkbox.checked = !checkbox.checked;
+            }
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        if (currentPath == '/liked_photos/') {
+            document.getElementById('download-selected').addEventListener('click', handleDownloadSelected);
+        }
+        if (currentPath == '/my_photos/') {
+            document.querySelectorAll('textarea').forEach(textarea => {
+                autoResize(textarea);
+            });
+            document.getElementById('select-all').addEventListener('change', handleSelectAll);
+            document.querySelector('.update-descriptions-btn').addEventListener('click', handleUpdateDescriptions);
+            document.getElementById('delete-selected').addEventListener('click', handleDeleteSelected);
+        }
+        
+        {% if user.is_authenticated %}
+        const notificationButton = document.getElementById('notificationButton');
+        const notificationList = document.getElementById('notificationList');
+        const closeButton = document.getElementById('closeNotification');
+        const notificationBadge = document.getElementById('notificationBadge');
+    
+        function updateNotificationCount() {
+            const count = document.querySelectorAll('#notificationList ul li').length;
+            notificationBadge.textContent = count > 0 ? count : '';
+            notificationBadge.classList.toggle('hidden', count === 0);
+            notificationButton.classList.toggle('animate-pulse', count > 0);
+        }
+    
+        notificationButton.addEventListener('click', function() {
+            notificationList.classList.toggle('hidden');
+        });
+    
+        closeButton.addEventListener('click', function() {
+            notificationList.classList.add('hidden');
+        });
+    
+        // 사진 보기 버튼에 AJAX 추가
+        const notificationLinks = document.querySelectorAll('#notificationList a');
+    
+        notificationLinks.forEach(function(link) {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                const url = this.href;
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }).then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    }
+                }).then(data => {
+                    this.closest('li').remove();
+                    updateNotificationCount();
+                    window.location.href = data.redirect_url;
+                });
+            });
+        });
+    
+        // 모두 읽음 버튼에 AJAX 추가
+        const markAllReadButton = document.querySelector('#notificationList form button[type="submit"]');
+        markAllReadButton.addEventListener('click', function(event) {
+            event.preventDefault();
+            const form = this.closest('form');
+            const url = form.action;
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            }).then(response => {
+                if (response.ok) {
+                    const notificationItems = document.querySelectorAll('#notificationList ul li');
+                    notificationItems.forEach(item => item.remove());
+                    updateNotificationCount();
+                    notificationList.classList.add('hidden');
+                }
+            });
+        });
+    
+        updateNotificationCount();
+        {% endif %}
+
+        
+    });
+</script>
+{% endblock %}

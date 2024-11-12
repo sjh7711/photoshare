@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}관리자 페이지{% endblock %}
+
+{% block content %}
+{% if user.id == 1 %}
+<script src="https://hoegifarm.shop/static/js/chart.js"></script>
+<script src="https://hoegifarm.shop/static/js/chartjs-adapter-date-fns"></script>
+<script src="https://hoegifarm.shop/static/js/chartjs-plugin-zoom"></script>
+<div class="container min-h-screen mx-auto px-4 py-4">
+    <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+        <h3 class="text-xl font-bold mb-2 md:mb-0">관리자 페이지</h3>
+        <div class="flex flex-wrap justify-center md:justify-end space-x-2">
+            <button id="logout_all_users-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs mb-2 md:mb-0 whitespace-nowrap">ALL 로그아웃</button>
+            <button id="cleanup-files-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs mb-2 md:mb-0 whitespace-nowrap">파일 정리</button>
+            <button id="convert-images-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs mb-2 md:mb-0 whitespace-nowrap">이미지 변환</button>
+        </div>
+    </div>
+    <hr class="my-4">
+    <div class="mb-4">
+        <div class="mb-4">
+            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
+                <h4 class="text-lg font-semibold">리소스 사용량</h4>
+                <div class="flex space-x-2">
+                    <select id="timeRange" class="w-full px-1 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="300">최근 5분</option>
+                        <option value="1800">최근 30분</option>
+                        <option value="3600">최근 1시간</option>
+                        <option value="21600">최근 6시간</option>
+                        <option value="43200">최근 12시간</option>
+                        <option value="86400">최근 24시간</option>
+                    </select>
+                    <button id="showHighCPU" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap">CPU ↑80</button>
+                    <button id="resetZoom" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap">줌 리셋</button>
+                </div>
+            </div>
+            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+                <div class="w-full md:w-1/2">
+                    <canvas id="usageChart" class="w-full h-64"></canvas>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <canvas id="networkChart" class="w-full h-64"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="flex flex-col md:flex-row items-center justify-between mt-4">
+            <h4 class="text-lg font-semibold mb-2 md:mb-0">로그 파일</h4>
+            <button id="clear-log-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap" onclick="clearLog()">로그 정리</button>
+        </div>
+        <pre id="log-content" class="mt-2 p-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg overflow-auto text-xs text-gray-800 dark:text-gray-200 h-64 resize-y">{{ log_content }}</pre>
+    </div>
+    <hr class="my-4">
+    <div class="mb-4 overflow-x-auto">
+        <h4 class="text-lg font-semibold mb-2">통계</h4>
+        <div class="overflow-x-auto">
+            <table class="w-full table-auto border-collapse text-xs whitespace-nowrap">
+                <thead>
+                    <tr class="bg-gray-200 dark:bg-gray-700">
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(0)">닉네임</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(1)">사진</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(2)">🔽❤️</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(3)">❤️비율</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(4)">싫어요</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(5)">제거</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(6)">🔼❤️</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(7)">댓글</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(8)">알림</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(9)">성인</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(10)">IP</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(11)">최근활동</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(12)">가입일</th>
+                        <th class="p-2 cursor-pointer text-center" onclick="sortTable(13)">전화번호</th>
+                        <th class="p-2 text-center">승인</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in recent_users %}
+                    <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
+                        <td class="p-2 text-center" data-username="{{ user.username }}" data-user-id="{{ user.id }}">{{ user.username }}</td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.uploaded_photos_count }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.total_likes }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.like_ratio }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.total_dislikes }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.deleted_photos_count }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.liked_photos_count }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.comments_count }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.unread_notifications_count }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.lastip }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.last_activity|date:"Y.m.d H:i" }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.date_joined|date:"Y.m.d H:i" }}</span></td>
+                        <td class="p-2 text-center"><span class="text-gray-600 dark:text-gray-400">{{ user.phone }}</span></td>
+                        <td class="p-2 text-center">
+                            {% if user in unapproved_users %}
+                            <form method="post" action="{% url 'approve_user' %}" class="inline-block">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-xs">승인</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <hr class="my-1">
+    <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-0.5">
+        <h5 class="text-base font-semibold mb-1">업로드 보류 사진</h5>
+        <div class="overflow-x-auto">
+            <table id="pending-photos" class="w-full table-auto text-xs">
+                <thead>
+                    <tr class="bg-gray-200 dark:bg-gray-700">
+                        <th class="p-0.5 whitespace-nowrap text-center">새사진</th>
+                        <th class="p-0.5 whitespace-nowrap text-center">기존사진</th>
+                        <th class="p-0.5 whitespace-nowrap text-center">업로더</th>
+                        <th class="p-0.5 whitespace-nowrap text-center">승인</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for photo in pending_photos %}
+                        <tr class="border-b border-gray-200 dark:border-gray-700" id="photo-{{ photo.id }}">
+                            <td class="p-0.5 text-center relative">
+                                <a href="https://hoegifarm.shop/{{ photo.pendig_photo_url }}">
+                                    <img src="https://hoegifarm.shop/{{ photo.pending_photo_path }}" class="w-40 object-cover rounded mx-auto">
+                                </a>
+                                <div class="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 text-sm">
+                                    <a class="text-white">
+                                        {% if photo.similar_photo_url == "deleted" %}
+                                        삭제
+                                        {% else %}
+                                        유사
+                                        {% endif %}
+                                    </a>
+                                </div>
+                            </td>
+                            <td class="p-0.5 text-center">
+                                <a href="https://hoegifarm.shop/{{ photo.similar_photo_url }}">
+                                    <img src="https://hoegifarm.shop/{{ photo.similar_photo_path }}" class="w-40 object-cover rounded mx-auto">
+                                </a>
+                            </td>
+                            <td class="p-0.5 text-center">
+                                <small class="text-gray-600 dark:text-gray-400">{{ photo.user.username }}</small>
+                            </td>
+                            <td class="p-0.5 text-center">
+                                <div class="flex justify-center space-x-1">
+                                    <button onclick="submitForm('approve', {{ photo.id }}, '{{ photo.pending_photo_path }}')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-0.5 px-1 rounded text-xs">승인</button>
+                                    <button onclick="submitForm('reject', {{ photo.id }}, '{{ photo.pending_photo_path }}')" class="bg-red-500 hover:bg-red-600 text-white font-bold py-0.5 px-1 rounded text-xs">거절</button>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <hr class="my-4">
+    <div class="overflow-x-auto">
+        <div class="inline-flex space-x-1 min-w-max">
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+                <h5 class="text-base font-semibold mb-2 whitespace-nowrap">최근 댓글</h5>
+                <table id="recent-comments" class="w-full table-auto text-xs">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="p-2 whitespace-nowrap text-center">사진</th>
+                            <th class="p-2 whitespace-nowrap text-center">작성자</th>
+                            <th class="p-2 whitespace-nowrap text-center">댓글</th>
+                            <th class="p-2 whitespace-nowrap text-center">작성일</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for comment in recent_comments %}
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <a href="{% url 'photo_detail' comment.photo.id %}">
+                                    <img src="{{ comment.photo.image.url }}" class="w-16 object-cover rounded mx-auto">
+                                </a>
+                            </td>
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <span class="text-gray-600 dark:text-gray-400">{{ comment.user.username }}</span>
+                            </td>
+                            <td class="p-2 text-center whitespace-normal max-w-[10rem] overflow-hidden text-ellipsis">
+                                <span class="text-gray-600 dark:text-gray-400">{{ comment.text }}</span>
+                            </td>
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <span class="text-gray-600 dark:text-gray-400">{{ comment.created_at|date:"Y.m.d H:i" }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+                <h5 class="text-base font-semibold mb-2 whitespace-nowrap">싫어요 받은 사진</h5>
+                <table id="hated-photos" class="w-full table-auto text-xs">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="p-2 whitespace-nowrap text-center">사진</th>
+                            <th class="p-2 whitespace-nowrap text-center">업로더</th>
+                            <th class="p-2 whitespace-nowrap text-center">싫어요</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for photo in hated_photos %}
+                        <tr class="border-b border-gray-200 dark:border-gray-700">
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <a href="{% url 'photo_detail' photo.id %}">
+                                    <img src="{{ photo.image.url }}" class="w-16 object-cover rounded mx-auto">
+                                </a>
+                            </td>
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <span class="text-gray-600 dark:text-gray-400">{{ photo.uploaded_by.username }}</span>
+                            </td>
+                            <td class="p-2 text-center whitespace-nowrap">
+                                <span class="text-gray-600 dark:text-gray-400">
+                                    {% for user in photo.disliked_by.all %}
+                                        {{ user.username }}{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+                <h5 class="text-base font-semibold mb-2 whitespace-nowrap">좋아요 누른 사진</h5>
+                <table id="like-photos" class="w-full table-auto text-xs">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="p-2 whitespace-nowrap text-center">사진</th>
+                            <th class="p-2 whitespace-nowrap text-center">업로더</th>
+                            <th class="p-2 whitespace-nowrap text-center">좋아요</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Additional like photos will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-1">
+                <h5 class="text-base font-semibold mb-2 whitespace-nowrap">싫어요 누른 사진</h5>
+                <table id="hate-photos" class="w-full table-auto text-xs">
+                    <thead>
+                        <tr class="bg-gray-200 dark:bg-gray-700">
+                            <th class="p-2 whitespace-nowrap text-center">사진</th>
+                            <th class="p-2 whitespace-nowrap text-center">업로더</th>
+                            <th class="p-2 whitespace-nowrap text-center">싫어요</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Additional disliked photos will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('td[data-username]').forEach(function(td) {
+            td.addEventListener('click', function() {
+                const userId = this.dataset.userId;
+                    fetch(`/user_activity/${userId}/`)
+                    .then(response => response.json())
+                    .then(data => {
+                    const recentCommentsTable = document.querySelector('#recent-comments tbody');
+                    const hatedPhotosTable = document.querySelector('#hated-photos tbody');
+                    const hatePhotosTable = document.querySelector('#hate-photos tbody');
+                    const likePhotosTable = document.querySelector('#like-photos tbody');
+
+                    recentCommentsTable.innerHTML = '';
+                    data.recent_comments.forEach(comment => {
+                        recentCommentsTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <a href="/photo/${comment.photo_id}/">
+                                        <img src="${comment.photo_url}" alt="${comment.photo_description}" class="w-16 object-cover rounded mx-auto">
+                                    </a>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${comment.username}</span>
+                                </td>
+                                <td class="p-2 text-center whitespace-normal max-w-[10rem] overflow-hidden text-ellipsis">
+                                    <span class="text-gray-600 dark:text-gray-400">${comment.text}</span>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${comment.created_at}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    hatedPhotosTable.innerHTML = '';
+                    data.hated_photos.forEach(photo => {
+                        hatedPhotosTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <a href="/photo/${photo.photo_id}/">
+                                        <img src="${photo.photo_url}" alt="${photo.photo_description}" class="w-16 object-cover rounded mx-auto">
+                                    </a>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.uploaded_by}</span>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.disliked_by.join(', ')}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    likePhotosTable.innerHTML = '';
+                    data.like_photos.forEach(photo => {
+                        likePhotosTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <a href="/photo/${photo.photo_id}/">
+                                        <img src="${photo.photo_url}" alt="${photo.photo_description}" class="w-16 object-cover rounded mx-auto">
+                                    </a>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.uploaded_by}</span>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.liked_by.join(', ')}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    hatePhotosTable.innerHTML = '';
+                    data.hate_photos.forEach(photo => {
+                        hatePhotosTable.innerHTML += `
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <a href="/photo/${photo.photo_id}/">
+                                        <img src="${photo.photo_url}" alt="${photo.photo_description}" class="w-16 object-cover rounded mx-auto">
+                                    </a>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.uploaded_by}</span>
+                                </td>
+                                <td class="p-2 text-center whitespace-nowrap">
+                                    <span class="text-gray-600 dark:text-gray-400">${photo.disliked_by.join(', ')}</span>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    // Scroll to the updated tables
+                    document.querySelector('.overflow-x-auto').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                });
+            });
+        });
+    });
+
+    function submitForm(action, photoId, photo_status) {
+        const url = action === 'approve' ? '{% url "approve_photo" %}' : '{% url "reject_photo" %}';
+    
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ photo_id: photoId, photo_status: photo_status })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(action === 'approve' ? '승인되었습니다.' : '거절되었습니다.');
+                document.getElementById(`photo-${photoId}`).remove();
+            } else {
+                alert('오류가 발생했습니다.');
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+
+    function sortTable(columnIndex) {
+        const table = document.querySelector("table tbody");
+        const rows = Array.from(table.rows);
+        const isAscending = table.getAttribute("data-sort-order") === "asc";
+        const newOrder = isAscending ? "desc" : "asc";
+
+        rows.sort((rowA, rowB) => {
+            const cellA = rowA.cells[columnIndex].innerText;
+            const cellB = rowB.cells[columnIndex].innerText;
+
+            if (!isNaN(cellA) && !isNaN(cellB)) {
+                return isAscending ? cellA - cellB : cellB - cellA;
+            }
+
+            return isAscending ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
+        });
+
+        table.innerHTML = "";
+        rows.forEach(row => table.appendChild(row));
+        table.setAttribute("data-sort-order", newOrder);
+    }
+
+    function clearLog() {
+        fetch('/clear-log/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('로그 파일이 정리되었습니다.');
+                document.getElementById('log-content').innerHTML = '';
+            } else {
+                alert('로그 파일 정리에 실패했습니다.');
+            }
+        });
+    }
+
+    function refreshLogContent() {
+        fetch('/admin_page/', {
+            headers: {
+                'x-requested-with': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            const logContentElement = document.getElementById('log-content');
+            if (logContentElement) {
+                logContentElement.textContent = data.log_content;
+                history.replaceState(null, '', window.location.href);
+            }
+        });
+    }
+    
+    refreshLogContent();
+    
+    setInterval(refreshLogContent, 2500);
+
+    document.getElementById('cleanup-files-btn').addEventListener('click', function() {
+        if (confirm("파일 삭제를 하시겠습니까?")) {
+            fetch("{% url 'cleanup_files' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+        }
+    });
+    
+    document.getElementById('logout_all_users-btn').addEventListener('click', function() {
+        if (confirm("모든 유저를 로그아웃하시겠습니까?")) {
+            fetch("{% url 'logout_all_users' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+        }
+    });
+    
+    document.getElementById('convert-images-btn').addEventListener('click', function() {
+        if (confirm("사진 변환 작업을 하시겠습니까?")) {
+            fetch("{% url 'convert_images' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            });
+        }
+    });
+
+    function createChart(ctx, labels, datasets, options) {
+        return new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                ...options,
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 0 },
+                plugins: {
+                    zoom: {
+                        pan: { enabled: true, mode: 'x' },
+                        zoom: {
+                            wheel: { enabled: true },
+                            pinch: { enabled: true },
+                            mode: 'x',
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(2);
+                                    if (context.dataset.unit) {
+                                        label += ' ' + context.dataset.unit;
+                                    }
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const usageCtx = document.getElementById('usageChart').getContext('2d');
+    const networkCtx = document.getElementById('networkChart').getContext('2d');
+
+    const usageChart = createChart(usageCtx, [], [
+        {
+            label: 'CPU Usage',
+            data: [],
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            fill: false,
+            yAxisID: 'y-cpu',
+            unit: '%',
+            pointRadius: 0
+        },
+        {
+            label: 'RAM Usage',
+            data: [],
+            borderColor: 'rgba(0, 255, 0, 1)',
+            borderWidth: 1,
+            fill: false,
+            yAxisID: 'y-ram',
+            unit: 'GB',
+            pointRadius: 0
+        }
+    ], {
+        scales: {
+            x: {
+                type: 'time',
+                time: { unit: 'minute', tooltipFormat: 'yyyy-MM-dd HH:mm:ss' },
+                grid: { display: false }
+            },
+            'y-cpu': {
+                beginAtZero: true,
+                max: 100,
+                position: 'left',
+                grid: { display: false },
+                title: { display: true, text: 'CPU Usage (%)' }
+            },
+            'y-ram': {
+                beginAtZero: true,
+                max: 23.42,
+                position: 'right',
+                grid: { display: false },
+                title: { display: true, text: 'RAM Usage (GB)' },
+                ticks: { callback: value => value.toFixed(2) + ' GB' }
+            }
+        }
+    });
+
+    const networkChart = createChart(networkCtx, [], [
+        {
+            label: 'Upload',
+            data: [],
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1,
+            fill: false,
+            yAxisID: 'y-network',
+            unit: 'MB/s',
+            pointRadius: 0
+        },
+        {
+            label: 'Download',
+            data: [],
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1,
+            fill: false,
+            yAxisID: 'y-network',
+            unit: 'MB/s',
+            pointRadius: 0
+        }
+    ], {
+        scales: {
+            x: {
+                type: 'time',
+                time: { unit: 'minute', tooltipFormat: 'yyyy-MM-dd HH:mm:ss' },
+                grid: { display: false }
+            },
+            'y-network': {
+                beginAtZero: true,
+                position: 'left',
+                grid: { display: false },
+                title: { display: true, text: 'Network Usage (MB/s)' },
+                ticks: { callback: value => value.toFixed(2) + ' MB/s' }
+            }
+        }
+    });
+
+    async function fetchUsageData(endpoint, params = {}) {
+        const queryString = new URLSearchParams(params).toString();
+        try {
+            const response = await fetch(`${endpoint}?${queryString}`);
+            const data = await response.json();
+            return data.data;
+        } catch (error) {
+            console.error('Error fetching usage data:', error);
+            return [];
+        }
+    }
+
+    let updateInterval;
+    let isShowingHighCPU = false;
+
+    async function updateCharts(timeRange) {
+        const endTime = Math.floor(Date.now() / 1000);
+        const startTime = endTime - timeRange;
+        const usage = await fetchUsageData('{% url "resource_data" %}', { duration: timeRange });
+
+        const labels = usage.map(entry => new Date(entry.timestamp * 1000));
+        
+        usageChart.data.labels = labels;
+        usageChart.data.datasets[0].data = usage.map(entry => entry.cpu_percent);
+        usageChart.data.datasets[1].data = usage.map(entry => entry.ram_used);
+        usageChart.update();
+
+        networkChart.data.labels = labels;
+        networkChart.data.datasets[0].data = usage.map(entry => entry.net_upload);
+        networkChart.data.datasets[1].data = usage.map(entry => entry.net_download);
+        networkChart.update();
+    }
+
+    document.getElementById('timeRange').addEventListener('change', function() {
+        if (!isShowingHighCPU) {
+            updateCharts(parseInt(this.value));
+        }
+    });
+
+    document.getElementById('showHighCPU').addEventListener('click', async function() {
+        if (isShowingHighCPU) {
+            // 원래 차트로 돌아가기
+            isShowingHighCPU = false;
+            this.textContent = 'CPU ↑80';
+            updateCharts(parseInt(document.getElementById('timeRange').value));
+            startUpdateInterval();
+        } else {
+            // 높은 CPU 사용률 데이터 표시
+            isShowingHighCPU = true;
+            this.textContent = '일반';
+            clearInterval(updateInterval);
+
+            const highCPUData = await fetchUsageData('{% url "high_cpu_times" %}', { threshold: 80, duration: 86400 });
+            const labels = highCPUData.map(entry => new Date(entry.timestamp * 1000));
+
+            usageChart.data.labels = labels;
+            usageChart.data.datasets[0].data = highCPUData.map(entry => entry.cpu_percent);
+            usageChart.data.datasets[1].data = highCPUData.map(entry => entry.ram_used);
+            usageChart.update();
+
+            networkChart.data.labels = labels;
+            networkChart.data.datasets[0].data = highCPUData.map(entry => entry.net_upload);
+            networkChart.data.datasets[1].data = highCPUData.map(entry => entry.net_download);
+            networkChart.update();
+        }
+    });
+
+    document.getElementById('resetZoom').addEventListener('click', function() {
+        usageChart.resetZoom();
+        networkChart.resetZoom();
+    });
+
+    // 초기 차트 업데이트
+    updateCharts(300);
+
+    function startUpdateInterval() {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        updateInterval = setInterval(() => updateCharts(parseInt(document.getElementById('timeRange').value)), 4000);
+    }
+
+    // 1분마다 차트 업데이트
+    startUpdateInterval();
+</script>
+{% else %}
+<p class="text-center text-red-500 font-bold mt-4">접근 권한이 없습니다.</p>
+{% endif %}
+{% endblock %}

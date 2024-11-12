@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-1 py-1">
+    <h3 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">공지</h3>
+    <ul class="bg-gray-100 dark:bg-gray-800 shadow-md rounded-lg overflow-hidden mb-8">
+        <li class="border-b border-gray-200 dark:border-gray-700 p-2">
+            <div class="flex {% if user.is_superuser %}justify-between{% else %}justify-end{% endif %} items-center">
+                {% if user.is_superuser %}
+                    <div>
+                        <input type="checkbox" id="select-all" class="form-checkbox h-5 mr-2 w-5 text-blue-600">
+                    </div>
+                {% endif %}
+                <div class="flex items-center space-x-4">
+                    <form method="get" class="flex items-center">
+                        <input type="text" name="q" class="form-input px-2 py-1 w-48 rounded-l-md dark:bg-gray-700 dark:text-gray-300" placeholder="검색어" value="{{ search_query }}">
+                        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-r-md transition duration-150 ease-in-out whitespace-nowrap">검색</button>
+                    </form>
+                </div>
+            </div>
+        </li>
+        {% for notice in important_notices %}
+            <li class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 p-2 flex items-center">
+                {% if user.is_superuser %}
+                    <input type="checkbox" name="notices" value="{{ notice.id }}" class="form-checkbox h-5 w-5 text-blue-600 mr-2">
+                {% endif %}
+                <a href="{% url 'notice_detail' notice.id %}" class="text-lg font-semibold text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300">[※ {{ notice.title }}]</a>
+                <span class="ml-auto w-min text-sm text-right text-gray-600 dark:text-gray-400">{{ notice.created_at|date:"Y.m.d H:i" }}</span>
+            </li>
+        {% endfor %}
+        {% for notice in page_obj %}
+            <li class="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 p-2 flex items-center">
+                {% if user.is_superuser %}
+                    <input type="checkbox" name="notices" value="{{ notice.id }}" class="form-checkbox h-5 w-5 text-blue-600 mr-2">
+                {% endif %}
+                <a href="{% url 'notice_detail' notice.id %}" class="text-lg text-gray-800 dark:text-gray-200 hover:text-gray-600 dark:hover:text-gray-400">{{ notice.title }}</a>
+                <span class="ml-auto w-min text-sm text-right text-gray-600 dark:text-gray-400">{{ notice.created_at|date:"Y.m.d H:i" }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+    {% if user.is_superuser %}
+        <div class="flex justify-between mb-4">
+            <form id="delete-form" method="post" action="{% url 'notice_list' %}">
+                {% csrf_token %}
+                <input type="hidden" name="notice_id" id="notice-id">
+                <button type="submit" class="bg-red-500 hover:bg-red-600 text-white font-bold px-2 py-1 rounded transition duration-150 ease-in-out" onclick="return confirmDelete()">삭제</button>
+            </form>
+            <a href="{% url 'notice_create' %}" class="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded-md transition duration-150 ease-in-out whitespace-nowrap">글쓰기</a>
+        </div>
+    {% endif %}
+    <nav class="flex justify-center">
+        <ul class="flex space-x-2">
+            {% if page_obj.has_previous %}
+                <li>
+                    <a href="?page=1" class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out">&laquo; 처음</a>
+                </li>
+                <li>
+                    <a href="?page={{ page_obj.previous_page_number }}" class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out">이전</a>
+                </li>
+            {% endif %}
+            <li>
+                <span class="px-3 py-2 bg-blue-500 text-white rounded-md">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+            {% if page_obj.has_next %}
+                <li>
+                    <a href="?page={{ page_obj.next_page_number }}" class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out">다음</a>
+                </li>
+                <li>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" class="px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-150 ease-in-out">마지막 &raquo;</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+<script>
+    function confirmDelete() {
+        return confirm("삭제하시겠습니까?");
+    }
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllCheckbox = document.getElementById('select-all');
+        const noticeCheckboxes = document.querySelectorAll('input[name="notices"]');
+        const deleteForm = document.getElementById('delete-form');
+        const noticeIdInput = document.getElementById('notice-id');
+    
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                noticeCheckboxes.forEach(function(checkbox) {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+            });
+        }
+    
+        deleteForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const selectedNotices = Array.from(noticeCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value);
+    
+            if (selectedNotices.length > 0) {
+                noticeIdInput.value = selectedNotices.join(',');
+                deleteForm.submit();
+            } else {
+                alert('삭제할 공지사항을 선택하세요.');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% load static %}
+<hr class="my-2">
+<div class="flex justify-between items-center flex-wrap mb-4">
+    <div class="flex items-center">
+        <form method="GET" action="" class="mr-2">
+            <input type="hidden" name="search_type" value="{% if 'search_type' in request.GET %}{{ request.GET.search_type }}{% endif %}">
+            <input type="hidden" name="query_description" value="{% if 'query_description' in request.GET %}{{ request.GET.query_description }}{% endif %}">
+            <input type="hidden" name="query_username" value="{% if 'query_username' in request.GET %}{{ request.GET.query_username }}{% endif %}">
+            <select name="sort" onchange="this.form.submit()" class="w-full px-1 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                <option value="latest" {% if 'sort' in request.GET and request.GET.sort == 'latest' %}selected{% endif %}>최신순</option>
+                <option value="likes" {% if 'sort' in request.GET and request.GET.sort == 'likes' %}selected{% endif %}>하트순</option>
+                <option value="oldest" {% if 'sort' in request.GET and request.GET.sort == 'oldest' %}selected{% endif %}>과거순</option>
+                {% if request.path == '/my_photos/'%}
+                    <option value="dislikes" {% if 'sort' in request.GET and request.GET.sort == 'dislikes' %}selected{% endif %}>싫어요순</option>
+                {% endif %}
+            </select>
+        </form>
+        {% if user.is_authenticated %}
+            <a href="{% url 'block_user_page' %}" class="btn btn-primary px-2 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600">차단</a>
+        {% endif %}
+    </div>
+    
+    <div class="flex items-center relative">
+        {% if user.is_authenticated %}
+            <button id="notificationButton" class="relative px-3 py-1 mr-1 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 dark:bg-orange-600 dark:hover:bg-orange-700 whitespace-nowrap">
+                내 알림
+                <span id="notificationBadge" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full"></span>
+            </button>
+            <div id="notificationList" class="hidden absolute right-2 mt-32 w-64 bg-white dark:bg-gray-800 rounded-md shadow-lg overflow-hidden z-50">
+                <div class="py-2">
+                    <h3 class="px-4 text-sm font-medium text-gray-900 dark:text-gray-100">알림</h3>
+                    <div class="mt-2 px-4">
+                        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                            {% for notification in notifications %}
+                                <li class="py-3">
+                                    <a href="{% url 'mark_notification_as_read' notification.id %}" class="block text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-2 py-1 rounded">
+                                        {{ notification.message }}
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 dark:border-gray-700">
+                    <form action="{% url 'mark_all_notifications_as_read' %}" method="post" class="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700">
+                        {% csrf_token %}
+                        <button type="submit" class="text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300">모두 읽음</button>
+                        <button type="button" id="closeNotification" class="text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400">
+                            <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+        <select id="max-photos-per-row" class="w-full px-1 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+    </div>
+</div>

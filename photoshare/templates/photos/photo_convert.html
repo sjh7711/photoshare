@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Video To Webp{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+        Webp, AVIF, GIF, Video → Webp, AVIF, GIF
+    </h1>
+    <p class="mb-4 text-gray-700 dark:text-gray-300">최대 4개 파일, 125MB 이하, 드래그&드랍 지원</p>
+    <p class="mb-4 text-gray-700 dark:text-gray-300">[포맷설명] Webp: 중간화질,중간용량 / AVIF: 고화질,저용량 / GIF: 저화질,고용량</p>
+    <form id="uploadForm" method="post" enctype="multipart/form-data" class="mb-8">
+        {% csrf_token %}
+        <div class="mb-4">
+            <input type="file" id="fileInput" name="files" accept="video/*,image/webp,image/gif,image/avif" multiple 
+                   class="block w-64 mb-2 p-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded border border-gray-300 dark:border-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900 dark:file:text-blue-200 dark:hover:file:bg-blue-800">
+        </div>
+        
+        <div class="mb-4">
+            <div class="flex">
+                <input type="text" id="urlInput" class="flex-grow p-2 border rounded mr-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400" placeholder="영상 URL 입력">
+                <button type="button" id="addUrl" class="bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-black dark:text-white font-bold py-1 px-2 rounded transition duration-150 ease-in-out whitespace-nowrap">추가</button>
+            </div>
+        </div>
+
+        <div id="uploadProgress" class="hidden mb-4">
+            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="progressText" class="text-sm font-medium text-gray-900 dark:text-gray-300 mt-1">0%</p>
+        </div>
+
+        <button type="submit" id="convertButton" 
+                class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+            변환 시작
+        </button>
+
+        <button type="button" id="refreshButton" 
+                class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded hidden">
+            새 파일 업로드
+        </button>
+    </form>
+
+    <div id="previewResultContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2"></div>
+</div>
+
+<template id="filePreviewTemplate">
+    <div class="file-preview bg-white dark:bg-gray-900 rounded-lg shadow-md p-2" style="width: 300px;">
+        <h3 class="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100 file-title" style="word-break: break-word; overflow-wrap: break-word;"></h3>
+        <div class="preview-container mb-4">
+            <!-- We'll dynamically insert either video or img tag here -->
+        </div>
+        <div class="settings mb-4">
+            <div class="video-settings" style="display: none;">
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">시작 시간 (초)</label>
+                    <input type="number" class="startTime w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600" min="0" step="0.1" value="0">
+                </div>
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">종료 시간 (초)</label>
+                    <input type="number" class="endTime w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600" min="0" step="0.1" value="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">FPS</label>
+                    <select class="frameCount w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                        <option value="10">10 FPS</option>
+                        <option value="12">12 FPS</option>
+                        <option value="15">15 FPS</option>
+                        <option value="20">20 FPS</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">변환 형식</label>
+                <select class="format w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                    <option value="webp">WebP</option>
+                    <option value="avif">AVIF</option>
+                    <option value="gif">GIF</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">최대 크기(가로)</label>
+                <select class="size w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                    <option value="800">800px</option>
+                    <option value="600">600px</option>
+                    <option value="480">480px</option>
+                    <option value="320">320px</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">화질</label>
+                <select class="quality w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                    <option value="high">고화질</option>
+                    <option value="med">보통</option>
+                    <option value="low">저화질</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">배속</label>
+                <select class="speed w-full mt-1 p-2 border rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border-gray-300 dark:border-gray-600">
+                    <option value="1.0">1.0x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="1.75">1.75x</option>
+                    <option value="2.0">2.0x</option>
+                </select>
+            </div>
+        </div>
+        <div class="result-container">
+            <p class="text-gray-700 dark:text-gray-300">변환 결과가 여기에 표시됩니다.</p>
+        </div>
+    </div>
+</template>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('fileInput');
+        const convertButton = document.getElementById('convertButton');
+        const refreshButton = document.getElementById('refreshButton');
+        const previewResultContainer = document.getElementById('previewResultContainer');
+        let selectedFiles = [];
+        let selectedFilesCount = 0;
+        let selectedFilesSize = 0;
+        const MAX_FILES = 4;
+        const MAX_FILE_SIZE = 125 * 1024 * 1024; // 125MB in bytes
+
+        function updateConvertButtonText() {
+            const totalSize = selectedFilesSize;
+            const fileSizeMB = (totalSize / (1024 * 1024)).toFixed(1);
+            convertButton.textContent = `변환 시작 (${selectedFiles.length}개 파일, ${fileSizeMB}MB)`;
+        }
+
+        function canAddFile(fileSize) {
+            const totalSize = selectedFilesSize;
+            return ((totalSize + fileSize) <= MAX_FILE_SIZE) && selectedFilesCount < MAX_FILES;
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            else return (bytes / 1048576).toFixed(1) + ' MB';
+        }
+
+        function addFilePreview(file) {
+            selectedFilesCount += 1;
+            selectedFilesSize += file.size;
+            if (selectedFilesCount > MAX_FILES || selectedFilesSize > MAX_FILE_SIZE) {
+                return false; // 파일 추가 중단
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const template = document.getElementById('filePreviewTemplate');
+                const previewElement = template.content.cloneNode(true);
+                
+                const fileUuid = crypto.randomUUID();
+                const previewContainer = previewElement.querySelector('.file-preview');
+                previewContainer.dataset.fileName = file.name;
+                previewContainer.dataset.fileUuid = fileUuid;
+                
+                const title = previewElement.querySelector('.file-title');
+                title.textContent = file.name;
+                
+                const previewContainerDiv = previewElement.querySelector('.preview-container');
+                const isVideo = file.type.startsWith('video/');
+                
+                if (isVideo) {
+                    const video = document.createElement('video');
+                    video.src = e.target.result;
+                    video.controls = true;
+                    video.className = 'w-full h-auto object-contain mb-2';
+                    video.style.maxWidth = '300px';
+                    previewContainerDiv.appendChild(video);
+                    
+                    previewElement.querySelector('.video-settings').style.display = 'block';
+                    
+                    const startTimeInput = previewElement.querySelector('.startTime');
+                    const endTimeInput = previewElement.querySelector('.endTime');
+                    
+                    video.addEventListener('loadedmetadata', function() {
+                        const duration = video.duration;
+                        endTimeInput.value = duration.toFixed(1);
+                        endTimeInput.max = duration.toFixed(1);
+                        
+                        startTimeInput.min = "0";
+                        endTimeInput.min = "0";
+                        
+                        startTimeInput.addEventListener('input', function() {
+                            let value = parseFloat(startTimeInput.value);
+                            if (isNaN(value) || value < 0) {
+                                startTimeInput.value = "0";
+                            } else if (value > parseFloat(endTimeInput.value)) {
+                                startTimeInput.value = endTimeInput.value;
+                            }
+                        });
+                        
+                        endTimeInput.addEventListener('input', function() {
+                            let value = parseFloat(endTimeInput.value);
+                            if (isNaN(value) || value < 0) {
+                                endTimeInput.value = "0";
+                            } else if (value > duration) {
+                                endTimeInput.value = duration.toFixed(1);
+                            }
+                            if (parseFloat(startTimeInput.value) > value) {
+                                startTimeInput.value = endTimeInput.value;
+                            }
+                        });
+                    });
+                } else {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = file.name;
+                    img.className = 'w-full h-auto object-contain mb-2';
+                    img.style.maxWidth = '300px';
+                    previewContainerDiv.appendChild(img);
+                }
+
+                const fileSizeDisplay = document.createElement('p');
+                fileSizeDisplay.className = 'text-sm text-gray-600 dark:text-gray-400 mt-1 mb-2';
+                fileSizeDisplay.textContent = `파일 크기: ${formatFileSize(file.size)}`;
+                previewContainerDiv.appendChild(fileSizeDisplay);
+
+                previewResultContainer.appendChild(previewElement);
+                
+                // Add file to selectedFiles array with its UUID
+                selectedFiles.push({ file: file, uuid: fileUuid });
+                updateConvertButtonText(); // 파일 추가 후 버튼 텍스트 업데이트
+            };
+            reader.readAsDataURL(file);
+            return true; // 파일 추가 성공
+        }
+        
+        function addFile(file) {
+            if (canAddFile(file.size)) {
+                addFilePreview(file);
+                updateConvertButtonText();
+            } else {
+                alert('파일 개수 또는 총 용량 제한을 초과하여 추가할 수 없습니다.');
+            }
+        }
+
+        fileInput.addEventListener('change', function(event) {
+            const newFiles = Array.from(event.target.files);
+            const validFiles = newFiles.filter(file => 
+                file.type.startsWith('video/') || 
+                file.type === 'image/webp' || 
+                file.type === 'image/gif' || 
+                file.type === 'image/avif'
+            );
+
+            let addedCount = 0;
+            for (let file of validFiles) {
+                if (addFile(file)) {
+                    addedCount++;
+                }
+                if (addedCount >= MAX_FILES || selectedFiles.length >= MAX_FILES) {
+                    break;
+                }
+            }
+
+            fileInput.value = ''; // Reset file input
+            updateConvertButtonText(); // 모든 파일 추가 후 버튼 텍스트 최종 업데이트
+        });
+    
+        document.getElementById('addUrl').addEventListener('click', function() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            if (url) {
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `/photoshare_proxy_image/?url=${encodeURIComponent(url)}`, true);
+                xhr.responseType = 'blob';
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        const blob = xhr.response;
+                        if (canAddFile(blob.size)) {
+                            const file = new File([blob], url.split('/').pop() + '.' + blob.type.split('/')[1], { type: blob.type });
+                            addFile(file);
+                            urlInput.value = '';
+                        } else {
+                            alert('URL의 파일이 총 용량 제한을 초과하여 추가할 수 없습니다.');
+                        }
+                    } else {
+                        alert('URL에서 파일을 가져오는데 실패했습니다.');
+                    }
+                };
+                xhr.onerror = function() {
+                    alert('URL에서 파일을 가져오는데 실패했습니다.');
+                };
+                xhr.send();
+            }
+        });
+    
+        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            if (selectedFiles.length === 0) {
+                alert('파일을 선택해주세요.');
+                return;
+            }
+        
+            const formData = new FormData();
+            const fileInfoArray = [];
+            
+            selectedFiles.forEach((fileObj, index) => {
+                const container = document.querySelector(`.file-preview[data-file-uuid="${fileObj.uuid}"]`);
+                if (container) {
+                    const fileInfo = {
+                        fileUuid: fileObj.uuid,
+                        startTime: container.querySelector('.startTime')?.value || '0',
+                        endTime: container.querySelector('.endTime')?.value || '0',
+                        frameCount: container.querySelector('.frameCount')?.value || '10',
+                        format: container.querySelector('.format').value,
+                        quality: container.querySelector('.quality').value,
+                        size: container.querySelector('.size').value,
+                        speed: container.querySelector('.speed').value
+                    };
+                    fileInfoArray.push(fileInfo);
+                    formData.append(`file_${index}`, fileObj.file);
+                }
+            });
+
+            document.getElementById('uploadProgress').classList.remove('hidden');
+        
+            formData.append('file_info', JSON.stringify(fileInfoArray));
+        
+            convertButton.disabled = true;
+            convertButton.textContent = '변환 중...';
+        
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', "{% url 'convert_video' %}", true);
+            xhr.setRequestHeader('X-CSRFToken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            xhr.upload.onprogress = function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    document.getElementById('progressBar').style.width = percentComplete + '%';
+                    document.getElementById('progressText').textContent = "업로드 : " + percentComplete.toFixed(1) + '%';
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        convertButton.style.display = 'none';
+                        data.task_info.forEach((taskInfo) => {
+                            const previewElement = document.querySelector(`.file-preview[data-file-uuid="${taskInfo.file_uuid}"]`);
+                            if (previewElement) {
+                                previewElement.dataset.taskId = taskInfo.task_id;
+                                checkTaskStatus(taskInfo.task_id, previewElement);
+                            }
+                        });
+                    } else {
+                        alert('변환 시작 실패: ' + data.error);
+                        convertButton.disabled = false;
+                        convertButton.textContent = '변환 시작';
+                    }
+                } else {
+                    alert('변환 요청 실패');
+                    convertButton.disabled = false;
+                    convertButton.textContent = '변환 시작';
+                }
+            };
+
+            xhr.send(formData);
+        });
+    
+        refreshButton.addEventListener('click', function() {
+            window.location.reload();
+        });
+        
+        function checkTaskStatus(taskId, previewElement) {
+            fetch(`/check_task_status/${taskId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultDiv = previewElement.querySelector('.result-container');
+                    
+                    if (data.state === 'PROGRESS') {
+                        resultDiv.innerHTML = `<p class="text-gray-700 dark:text-gray-300">변환 중: ${data.progress}%</p>
+                                            <div class="progress-bar" style="width: ${data.progress}%;"></div>`;
+                        setTimeout(() => checkTaskStatus(taskId, previewElement), 1000);
+                    } else if (data.state === 'SUCCESS') {
+                        displayResult(data.result, previewElement);
+                        if (previewElement === previewResultContainer.lastElementChild) {
+                            refreshButton.style.display = 'inline-block';
+                        }
+                    } else if (data.state === 'FAILURE') {
+                        resultDiv.innerHTML = `<p class="text-red-500 dark:text-red-400">변환 실패: ${data.status}</p>`;
+                        if (previewElement === previewResultContainer.lastElementChild) {
+                            convertButton.disabled = false;
+                        }
+                    } else {
+                        setTimeout(() => checkTaskStatus(taskId, previewElement), 1000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('상태 확인 실패');
+                });
+        }
+    
+        function displayResult(result, previewElement) {
+            const resultDiv = previewElement.querySelector('.result-container');
+            const originalName = previewElement.querySelector('.file-title').textContent;
+            
+            if (result.success) {
+                const webpImg = document.createElement('img');
+                webpImg.src = result.converted;
+                webpImg.alt = 'Converted Animated WebP';
+                webpImg.className = 'w-full h-auto object-contain mb-2';
+                
+                const infoContainer = document.createElement('div');
+                infoContainer.className = 'flex justify-between items-center mt-2';
+                
+                const actualSizeElement = document.createElement('p');
+                actualSizeElement.className = 'text-sm text-gray-700 dark:text-gray-300';
+                actualSizeElement.textContent = `size: ${formatFileSize(result.file_size)}`;
+                
+                const downloadBtn = document.createElement('a');
+                downloadBtn.href = result.converted;
+                downloadBtn.download = originalName + '.webp';
+                downloadBtn.className = 'bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded inline-block';
+                downloadBtn.textContent = '다운로드';
+                
+                infoContainer.appendChild(actualSizeElement);
+                infoContainer.appendChild(downloadBtn);
+                
+                resultDiv.innerHTML = '';
+                resultDiv.appendChild(webpImg);
+                resultDiv.appendChild(infoContainer);
+            } else {
+                resultDiv.innerHTML = '<p class="text-red-500 dark:text-red-400">변환 실패: ' + result.error + '</p>';
+            }
+        }
+    
+        updateConvertButtonText();
+    });
+</script>
+<style>
+    .progress-bar {
+        height: 20px;
+        background-color: #4CAF50;
+        text-align: center;
+        line-height: 20px;
+        color: white;
+    }
+    @media (prefers-color-scheme: dark) {
+        .progress-bar {
+            background-color: #2F855A;
+        }
+    }
+</style>
+
+{% endblock content %}

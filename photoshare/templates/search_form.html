@@ -1,0 +1,105 @@
+{% load static %}
+
+<form method="GET" action="" class="flex flex-col w-full max-w-md gap-2">
+    <div class="flex gap-2">
+        {% if not hide_uploader %}
+        <div id="uploader-field" class="flex-1">
+        {% else %}
+        <div id="uploader-field" style="display: none;">
+        {% endif %}
+        {% if not hide_uploader %}
+            <select id="uploader" name="query_username" class="w-20 px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
+                <option value="">업로더</option>
+                {% for user in uploaders %}
+                    <option value="{{ user.username }}" {% if 'query_username' in request.GET and request.GET.query_username == user.username %}selected{% endif %}>
+                        {{ user.username }} ({{ user.photo_count }})
+                    </option>
+                {% endfor %}
+            </select>
+        {% else %}
+            <input type="hidden" id="uploader" name="query_username" value="{{ request.user.username }}">
+        {% endif %}
+        </div>
+      
+        <div id="query-field" class="flex-grow">
+            <input type="text" id="query" name="query_description" class="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" value="{% if 'query_description' in request.GET %}{{ request.GET.query_description }}{% endif %}" placeholder="검색어">
+        </div>
+    </div>
+    
+    <div class="flex gap-2">
+        <div id="date-range-field" class="flex-1">
+            <input type="text" id="date-range" name="date_range" class="w-full px-2 py-1 mt-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" placeholder="기간" readonly value="{% if 'date_range' in request.GET %}{{ request.GET.date_range }}{% endif %}">
+        </div>
+      
+        <div class="flex-none">
+            <button type="submit" class="px-3 py-1 mt-1 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-blue-500 rounded-md whitespace-nowrap">
+            검색
+            </button>
+        </div>
+    </div>
+</form>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const uploaderSelect = document.getElementById('uploader');
+        
+        const dateRangeInput = document.getElementById('date-range');
+        let photoData = {};
+        
+        function fetchPhotoData(selectedUploader, dateRange) {
+            let url = `/get_photo_data/?uploader=${selectedUploader}`;
+            if (dateRange) {
+                url += `&date_range=${dateRange}`;
+            }
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    photoData = data;
+                    fp.redraw();
+                });
+        }
+        
+        function adjustDate(date) {
+            const adjusted = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+            return adjusted.toISOString().split('T')[0];
+        }
+        
+        const fp = flatpickr(dateRangeInput, {
+            mode: 'range',
+            dateFormat: 'Y-m-d',
+            defaultDate: '{% if "date_range" in request.GET %}{{ request.GET.date_range }}{% endif %}'.split(' to '),
+            onChange: function(selectedDates, dateStr, instance) {
+                const selectedUploader = uploaderSelect.value;
+                fetchPhotoData(selectedUploader, dateStr);
+            },
+            onDayCreate: function(dObj, dStr, fp, dayElem) {
+                const adjustedDate = adjustDate(dayElem.dateObj);
+                const photoCount = photoData[adjustedDate] || 0;
+                const countElem = document.createElement('span');
+                countElem.classList.add('photo-count', 'text-xs');
+                countElem.textContent = "(" + photoCount + ")";
+                dayElem.appendChild(countElem);
+                
+                if (photoCount > 0) {
+                    dayElem.classList.add('font-bold', 'text-blue-600');
+                }
+            }
+        });
+
+        if (uploaderSelect) {
+            uploaderSelect.addEventListener('change', function() {
+                const selectedUploader = this.value;
+                const dateRange = dateRangeInput.value;
+                fetchPhotoData(selectedUploader, dateRange);
+            });
+        }
+        
+        // 초기 데이터 로드
+        const initialUploader = uploaderSelect.value;
+        const initialDateRange = dateRangeInput.value;
+        fetchPhotoData(initialUploader, initialDateRange);
+    });
+</script>

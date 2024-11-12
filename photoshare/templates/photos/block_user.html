@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container min-h-screen mx-auto px-1 py-1">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold"><a href="{% url 'block_user_page' %}" class="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300">사진 필터링</a></h2>
+    </div>
+    <hr class="border-gray-300 dark:border-gray-700 mb-6">
+    <div class="flex justify-center items-center mb-6">
+        <form id="block-user-form" method="post" class="flex items-center space-x-2">
+            {% csrf_token %}
+            <label for="blocked_user" class="text-gray-700 dark:text-gray-300">유저 목록</label>
+            <select id="blocked_user" name="blocked_user_id" class="form-select px-2 py-2 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                {% endfor %}
+            </select>
+            <button type="button" class="bg-red-500 whitespace-nowrap hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-sm transition duration-150 ease-in-out" onclick="blockUser()">차단</button>
+        </form>
+    </div>
+    <hr class="border-gray-300 dark:border-gray-700 mb-6">
+    <div class="overflow-x-auto">
+        <table class="min-w-full table-auto">
+            <thead>
+                <tr class="bg-gray-200 dark:bg-gray-700">
+                    <th class="px-1 py-1 whitespace-nowrap text-center text-gray-700 dark:text-gray-300">차단 목록</th>
+                    <th class="px-1 py-1 whitespace-nowrap text-center text-gray-700 dark:text-gray-300">차단일</th>
+                    <th class="px-1 py-1 whitespace-nowrap text-center text-gray-700 dark:text-gray-300">해제</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for blockedUser in blockedUsers %}
+                <tr data-user-id="{{ blockedUser.blocked.id }}" class="border-b border-gray-200 dark:border-gray-700">
+                    <td class="px-1 py-1 text-gray-700 text-center dark:text-gray-300">{{ blockedUser.blocked.username }}</td>
+                    <td class="px-1 py-1 text-gray-700 text-center dark:text-gray-300">{{ blockedUser.created_at|date:"Y.m.d" }}</td>
+                    <td class="px-1 py-1 text-center">
+                        <form id="unblock-user-form-{{ blockedUser.blocked.id }}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="blocked_user_id" value="{{ blockedUser.blocked.id }}">
+                            <button type="button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 whitespace-nowrap rounded text-sm transition duration-150 ease-in-out" onclick="unblockUser({{ blockedUser.blocked.id }})">해제</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+<script>
+    function blockUser() {
+        const blockedUserId = document.getElementById('blocked_user').value;
+        fetch("{% url 'block_user' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ blocked_user_id: blockedUserId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                const tableBody = document.querySelector('table tbody');
+                const newRow = document.createElement('tr');
+                newRow.setAttribute('data-user-id', blockedUserId);
+                newRow.classList.add('border-b', 'border-gray-200', 'dark:border-gray-700');
+                newRow.innerHTML = `
+                    <td class="px-1 py-1 text-gray-700 dark:text-gray-300">${data.blocked_user.username}</td>
+                    <td class="px-1 py-1 text-gray-700 dark:text-gray-300">${data.blocked_user.created_at}</td>
+                    <td class="px-1 py-1">
+                        <form id="unblock-user-form" method="post">
+                            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+                            <input type="hidden" name="blocked_user_id" value="${data.blocked_user.id}">
+                            <button type="button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded text-sm transition duration-150 ease-in-out" onclick="unblockUser(${data.blocked_user.id})">해제</button>
+                        </form>
+                    </td>
+                `;
+                tableBody.appendChild(newRow);
+                const selectElement = document.getElementById('blocked_user');
+                const optionToRemove = document.querySelector(`option[value="${data.blocked_user.id}"]`);
+                selectElement.removeChild(optionToRemove);
+            } else {
+                alert('Failed to block user.');
+            }
+        });
+    }
+
+    function unblockUser(blockedUserId) {
+        fetch("{% url 'unblock_user' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({ blocked_user_id: blockedUserId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                const trToRemove = document.querySelector(`tr[data-user-id="${blockedUserId}"]`);
+                trToRemove.parentNode.removeChild(trToRemove);
+            } else {
+                alert('Failed to unblock user.');
+            }
+        });
+    }
+</script>
+{% endblock %}

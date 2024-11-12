@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mx-auto px-1 py-1">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold"><a href="{% url 'my_comments' %}" class="text-gray-900 dark:text-gray-100 hover:text-gray-700 dark:hover:text-gray-300">내가 쓴 댓글</a></h2>
+        <button id="myPhotoCommentsButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-150 ease-in-out">받은 댓글</button>
+    </div>
+    <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg">
+        <table class="w-full">
+            <thead class="bg-gray-200 dark:bg-gray-700">
+                <tr>
+                    <th class="px-1 py-1 text-center text-gray-700 dark:text-gray-300">사진</th>
+                    <th class="px-1 py-1 text-center text-gray-700 dark:text-gray-300">댓글 내용</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for comment in comments %}
+                <tr class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <td class="px-1 py-1 w-[80px]">
+                        <div class="flex flex-col items-center">
+                            <a href="{% url 'photo_detail' comment.photo.id %}" class="w-[60px] flex justify-center">
+                                <img src="{{ comment.photo.image.url }}" class="w-full h-auto object-cover" alt="사진">
+                            </a>
+                            <div class="text-center text-xs mt-1">{{ comment.photo.uploaded_by }}</div>
+                        </div>
+                    </td>
+                    <td class="px-1 py-1 text-gray-700 dark:text-gray-300">
+                        <div class="flex flex-col h-full justify-between">
+                            <div>
+                                {% if 'my_photo_comments' in request.GET and request.GET.my_photo_comments == 'true' %}
+                                    <div class="text-xs mb-2 text-gray-400 dark:text-gray-500">{{ comment.user.username }}의 {{ comment.type }}</div>
+                                {% endif %}
+                                <div class="break-words whitespace-normal text-sm overflow-hidden" style="word-break: break-word; max-width: 100%;">{{ comment.text }}</div>
+                            </div>
+                            <div class="text-xs mt-2 text-gray-400 dark:text-gray-500">{{ comment.created_at|date:"Y.m.d" }}</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="flex justify-center mt-6">
+        <nav aria-label="Page navigation">
+            <ul class="flex flex-wrap justify-center">
+                {% if comments.has_previous %}
+                <li class="m-1">
+                    <a href="?page={{ comments.previous_page_number }}&{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">이전</a>
+                </li>
+                {% endif %}
+    
+                {% with ''|center:5 as range %}
+                {% for _ in range %}
+                    {% with forloop.counter0|add:comments.number|add:-2 as num %}
+                        {% if num > 0 and num <= comments.paginator.num_pages %}
+                        <li class="m-1">
+                            <a href="?page={{ num }}&{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="px-3 py-2 {% if comments.number == num %}bg-blue-500 text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700{% endif %} border border-gray-300 dark:border-gray-600 rounded-md">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endwith %}
+                {% endfor %}
+                {% endwith %}
+    
+                {% if comments.has_next %}
+                <li class="m-1">
+                    <a href="?page={{ comments.next_page_number }}&{% for key, value in request.GET.items %}{% if key != 'page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md">다음</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+<script>
+    document.getElementById('myPhotoCommentsButton').addEventListener('click', function() {
+        window.location.href = window.location.pathname + '?my_photo_comments=true';
+    });
+</script>
+{% endblock %}

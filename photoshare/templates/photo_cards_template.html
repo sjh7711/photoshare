@@ -1,0 +1,9 @@
+{% for photo in photos %}
+    {% if request.path == '/liked_photos/' %}
+        {% include 'photo_card.html' with photo=photo user=user request=request show_dislike_button=False show_download_button=True show_checkbox=True show_edit_description=False %}
+    {% elif request.path == '/my_photos/' %}
+        {% include 'photo_card.html' with photo=photo user=user request=request show_dislike_button=False show_download_button=False show_checkbox=True show_edit_description=True %}
+    {% else %}
+        {% include 'photo_card.html' with photo=photo user=user request=request show_dislike_button=True show_download_button=False show_checkbox=False show_edit_description=False %}
+    {% endif %}
+{% endfor %}
