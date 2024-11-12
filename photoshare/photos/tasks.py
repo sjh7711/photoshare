@@ -74,12 +74,6 @@ def process_file(file_path, description, user_id):
         if file_extension in ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg']:
             avif_file_path = f"{os.path.splitext(file_path)[0]}.avif" # ex) /path/to/video.mp4 -> /path/to/video.webp
             try:
-                # command = [
-                #     'ffmpeg', '-i', file_path, '-c:v', 'libwebp', '-lossless', '0', 
-                #     '-q:v', '65', '-preset', 'picture', '-loop', '0', '-an',
-                #     '-r', '20', '-threads', '0', '-vf', 'scale=\'if(gt(iw,800),800,iw)\':-1', 
-                #     '-frames:v', '600', webp_file_path
-                # ]
                 command = [
                     'ffmpeg', '-i', file_path, '-c:v', 'libsvtav1', '-crf', '23', '-b:v', '0',
                     '-cpu-used', '4', '-tile-columns', '2', '-tile-rows', '2',
@@ -251,9 +245,9 @@ def send_push_message_to_all(user_id, uploadedPhotoscount):
         payload = {
             "head": "새 사진",
             "body": f"{user.username}님의 사진{uploadedPhotoscount}개 업로드",
-            "badge": "https://hoegifarm.shop/static/favicon/badge.png",
-            "icon": "https://hoegifarm.shop/static/favicon/android-icon-96x96.png",
-            "image": f"https://hoegifarm.shop/resized_icon/{lastPhoto.id}.png",
+            "badge": "https://192.168.0.225/static/favicon/badge.png",
+            "icon": "https://192.168.0.225/static/favicon/android-icon-96x96.png",
+            "image": f"https://192.168.0.225/resized_icon/{lastPhoto.id}.png",
             "url": "/",
             "tag": "photo_upload"
         }

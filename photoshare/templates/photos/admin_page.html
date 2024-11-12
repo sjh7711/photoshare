@@ -4,9 +4,9 @@
 
 {% block content %}
 {% if user.id == 1 %}
-<script src="https://hoegifarm.shop/static/js/chart.js"></script>
-<script src="https://hoegifarm.shop/static/js/chartjs-adapter-date-fns"></script>
-<script src="https://hoegifarm.shop/static/js/chartjs-plugin-zoom"></script>
+<script src="https://192.168.0.225/static/js/chart.js"></script>
+<script src="https://192.168.0.225/static/js/chartjs-adapter-date-fns"></script>
+<script src="https://192.168.0.225/static/js/chartjs-plugin-zoom"></script>
 <div class="container min-h-screen mx-auto px-4 py-4">
     <div class="flex flex-col md:flex-row items-center justify-between mb-4">
         <h3 class="text-xl font-bold mb-2 md:mb-0">관리자 페이지</h3>
@@ -121,8 +121,8 @@
                     {% for photo in pending_photos %}
                         <tr class="border-b border-gray-200 dark:border-gray-700" id="photo-{{ photo.id }}">
                             <td class="p-0.5 text-center relative">
-                                <a href="https://hoegifarm.shop/{{ photo.pendig_photo_url }}">
-                                    <img src="https://hoegifarm.shop/{{ photo.pending_photo_path }}" class="w-40 object-cover rounded mx-auto">
+                                <a href="https://192.168.0.225/{{ photo.pendig_photo_url }}">
+                                    <img src="https://192.168.0.225/{{ photo.pending_photo_path }}" class="w-40 object-cover rounded mx-auto">
                                 </a>
                                 <div class="absolute top-0 left-0 bg-red-500 text-white px-2 py-1 text-sm">
                                     <a class="text-white">
@@ -135,8 +135,8 @@
                                 </div>
                             </td>
                             <td class="p-0.5 text-center">
-                                <a href="https://hoegifarm.shop/{{ photo.similar_photo_url }}">
-                                    <img src="https://hoegifarm.shop/{{ photo.similar_photo_path }}" class="w-40 object-cover rounded mx-auto">
+                                <a href="https://192.168.0.225/{{ photo.similar_photo_url }}">
+                                    <img src="https://192.168.0.225/{{ photo.similar_photo_path }}" class="w-40 object-cover rounded mx-auto">
                                 </a>
                             </td>
                             <td class="p-0.5 text-center">

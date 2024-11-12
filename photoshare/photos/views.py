@@ -413,7 +413,7 @@ def my_photos(request):
     for photo in photos_page:
         if photo.image in pending_photos:
             sim_path = pending_photos[photo.image]
-            photo.is_pending = f"https://hoegifarm.shop/photo/{original_photos.get(sim_path, '')}"
+            photo.is_pending = f"https://192.168.0.225/photo/{original_photos.get(sim_path, '')}"
         else:
             photo.is_pending = False
         photo.comment_count = photo.comments.count()  # This might trigger a query, consider adding it to prefetch if needed frequently
@@ -826,7 +826,6 @@ def update_description(request, photo_id):
     photo = get_object_or_404(Photo, id=photo_id)
     data = json.loads(request.body)
     new_description = data.get('description', '').strip()
-    logger.info(f"New description: {new_description[len(photo.description):]}, Photo: https://hoegifarm.shop/photo/{photo_id}, User: {request.user.username}")
 
     if request.user == photo.uploaded_by :
         photo.description = new_description
@@ -1056,13 +1055,13 @@ def my_notifications(request):
     for notification in notifications:
         if notification.is_notice:
             notification.type = "공지"
-            notification.url = "https://hoegifarm.shop/notice/"+ str(notification.notice_id)
+            notification.url = "https://192.168.0.225/notice/"+ str(notification.notice_id)
         elif notification.is_pending:
             notification.type = "보류"
             notification.url = False
         else:
             notification.type = "알림"
-            notification.url = "https://hoegifarm.shop/photo/" + str(Photo.objects.get(id=notification.photo_id).id)
+            notification.url = "https://192.168.0.225/photo/" + str(Photo.objects.get(id=notification.photo_id).id)
     
     return render(request, 'photos/my_notifications.html', {'notifications': notifications})
 
@@ -1083,12 +1082,12 @@ def mark_notification_as_read(request, notification_id):
     
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         if notification.is_notice == True:
-            redirect_url = f'https://hoegifarm.shop/notice/{notification.notice.id}'
+            redirect_url = f'https://192.168.0.225/notice/{notification.notice.id}'
             return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
         elif notification.is_pending:
             return JsonResponse({'status': 'success', 'redirect_url': request.META.get('HTTP_REFERER', '/')})
         else:
-            redirect_url = f'https://hoegifarm.shop/photo/{notification.photo.id}'
+            redirect_url = f'https://192.168.0.225/photo/{notification.photo.id}'
             return JsonResponse({'status': 'success', 'redirect_url': redirect_url})
             
 
