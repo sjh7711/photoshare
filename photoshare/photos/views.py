@@ -26,7 +26,8 @@ import imagehash
 
 from .models import Photo, Comment, CustomUser, Notification, DeletedPhoto, Notice, PendingApprovalPhoto, Block
 from .forms import MultiPhotoForm, PhotoSearchForm, SignUpForm, EditProfileForm, CommentForm, NoticeForm
-from .tasks import process_and_save_photos
+from photoprocess.tasks import process_and_save_photos
+from photoprocess.tasks import convert_file_to_animation
 
 from django_redis import get_redis_connection
 
@@ -583,7 +584,8 @@ def upload_photo(request):
                 files = request.FILES.getlist('images')
                 descriptions = request.POST.getlist('descriptions')
                 preserve_order = request.POST.get('preserve_order')
-                temp_dir = '/home/test/photoshare/photoshare/photos/temp'
+                temp_dir = './photos/temp'
+                #projectfoler ./~
                 if not os.path.exists(temp_dir):
                     os.makedirs(temp_dir)
                 
@@ -646,7 +648,7 @@ def upload_photo_without_login(request):
                 user = get_object_or_404(get_user_model(), username=username)
                 files = request.FILES.getlist('images')
                 descriptions = request.POST.getlist('descriptions')
-                temp_dir = '/home/test/photoshare/photoshare/photos/temp'
+                temp_dir = './photos/temp'
                 if not os.path.exists(temp_dir):
                     os.makedirs(temp_dir)
                 
@@ -670,8 +672,6 @@ def upload_photo_without_login(request):
         form = MultiPhotoForm()
     return render(request, 'photos/upload_photo_without_login.html', {'form': form})
 
-from .tasks import convert_file_to_animation
-
 ALLOWED_EXTENSIONS = ['.webp', '.avif', '.gif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg']
 
 def is_valid_file(filename):
@@ -683,8 +683,8 @@ def convert_video(request):
         try:
             file_info = json.loads(request.POST.get('file_info', '[]'))
             
-            base_temp_dir = '/home/test/photoshare/photoshare/photos/temp'
-            convert_dir = '/home/test/photoshare/photoshare/photos/converts'
+            base_temp_dir = './photos/temp'
+            convert_dir = './photos/converts'
             os.makedirs(convert_dir, exist_ok=True)
 
             task_info = []
@@ -901,8 +901,8 @@ def dislike_photo(request, photo_id):
         new_path = os.path.join(deleted_folder, os.path.basename(current_path))
 
         shutil.move(current_path, new_path)
-        redis_conn4.set(new_path.split("/home/test/photoshare/photoshare/")[1], redis_conn4.get(current_path.split("/home/test/photoshare/photoshare/")[1]))
-        redis_conn4.delete(current_path.split("/home/test/photoshare/photoshare/")[1])
+        redis_conn4.set(new_path, redis_conn4.get(current_path))
+        redis_conn4.delete(current_path)
                         
         logger.info(f"Photo deleted: Time={timezone.now()}, Owner={photo.uploaded_by}, Filename={new_path}\nDislikes={photo.dislikes}|{[user.username for user in photo.disliked_by.all()]}, Likes={photo.likes}|{[user.username for user in photo.liked_by.all()]}, effectiveLikes={effective_likes}")
         photo.delete()
@@ -934,7 +934,7 @@ def delete_photos(request):
             photo.delete()
             
             try:
-                redis_key = (photo.image.path).split("/home/test/photoshare/photoshare/")[1]
+                redis_key = photo.image.path
                 checkname = redis_conn4.get(redis_key)
                 if checkname is not None:
                     redis_conn4.delete(redis_key)
@@ -967,7 +967,7 @@ def delete_photo(request, photo_id):
         photo.delete()
             
         try:
-            redis_key = (photo.image.path).split("/home/test/photoshare/photoshare/")[1]
+            redis_key = photo.image.path
             checkname = redis_conn4.get(redis_key)
             if checkname is not None:
                 redis_conn4.delete(redis_key)
@@ -1626,7 +1626,7 @@ def get_high_cpu_times(request):
 
 @superuser_required
 def protected_temp_media(request, path):
-    file_path = os.path.join('/home/test/photoshare/photoshare/photos/temp', path)
+    file_path = os.path.join('./photos/temp', path)
     return FileResponse(open(file_path, 'rb'))
 
 import io
@@ -1700,7 +1700,7 @@ def reject_photo(request):
             
         photo.delete()
         
-        redis_conn4.delete(file_path.split("/home/test/photoshare/photoshare/")[1])
+        redis_conn4.delete(file_path)
         
         pending_photo.delete()
     

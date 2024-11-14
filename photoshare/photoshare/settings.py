@@ -11,16 +11,18 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 #/home/test/photoshare/photoshare
+#/app/photoshare
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-from .SECRET_KEY import SECRET_KEY
+SECRET_KEY = os.environ.get('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -94,6 +96,7 @@ ALLOWED_HOSTS = ['192.168.0.225', '127.0.0.1', 'localhost']
 # Application definition
 
 INSTALLED_APPS = [
+    'photoprocess',
     'photoshare',
     'photos',
     'django.contrib.admin',
@@ -107,7 +110,10 @@ INSTALLED_APPS = [
     'django_celery_results',
 ]
 
-from .WEBPUSH import WEBPUSH_SETTINGS
+WEBPUSH_SETTINGS = {
+    "VAPID_PUBLIC_KEY": "BF8W2TsvWTI-oNLpT5zFJ83aO_-3k65znBiCt0JkA6K2_8dOvgkrEihlFASeXop3uVQ9q-3AOnprJAkRoUhO9jg",
+    "VAPID_PRIVATE_KEY": os.environ.get('VAPID_PRIVATE_KEY')
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -144,7 +150,16 @@ WSGI_APPLICATION = 'photoshare.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-from .DATABASES import DATABASES
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.environ.get('DB_NAME'),
+        'USER': os.environ.get('DB_USER'),
+        'PASSWORD': os.environ.get('DB_PASSWORD'),
+        'HOST': os.environ.get('DB_HOST'),
+        'PORT': os.environ.get('DB_PORT'),
+    }
+}
 
 CACHES = {
     "default": {

@@ -7,7 +7,7 @@ from django.conf import settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'photoshare.settings')
 
 # Celery 앱 생성
-app = Celery('photos')
+app = Celery('photoprocess')
 
 # namespace='CELERY'는 모든 celery 관련 설정 키가 'CELERY_' 접두어를 가져야 한다고 알려줍니다.
 app.config_from_object('django.conf:settings', namespace='CELERY')

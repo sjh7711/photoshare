@@ -1,0 +1,9 @@
+django-webpush
+imagehash
+django_redis
+pillow-avif-plugin
+celery
+django_extensions
+django_celery_results
+gunicorn
+mysqlclient

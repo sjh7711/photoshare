@@ -1,0 +1,31 @@
+# Python 3 기반 이미지 사용
+FROM python:3.9-slim
+
+# 시스템 패키지 설치
+RUN apt-get update && \
+    apt-get install -y python3-dev default-libmysqlclient-dev build-essential pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+# 작업 디렉토리 설정
+WORKDIR /app
+
+# 필요한 파이썬 패키지 복사 및 설치
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 소스 코드 복사
+COPY photoshare/settings.py /app/photoshare/photoshare/settings.py
+COPY photos /app/photoshare/photos
+COPY photoprocess /app/photoshare/photoprocess
+COPY manage.py /app/photoshare/manage.py
+
+RUN mkdir -p /app/photoshare/photoprocess/resized_icon
+RUN mkdir -p /app/photoshare/photos/temp /app/photoshare/photos/uploads /app/photoshare/photos/converts
+
+ENV PYTHONPATH="/app"
+
+# 작업 디렉토리 변경
+WORKDIR /app/photoshare
+
+# Celery 실행
+CMD ["celery", "-A", "photoprocess", "worker", "--loglevel=info"]

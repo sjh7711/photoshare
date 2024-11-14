@@ -28,7 +28,7 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-const publicVapidKey = 'BDjtH-LpOGJMMtWtRhmfpoaymsuY2Q8K1s5mZ5hQyzDEQko23ZDqHHoO8UHRYRy1Pa0O6YlbWbuszppIxkS2KbM';
+const publicVapidKey = 'BF8W2TsvWTI-oNLpT5zFJ83aO_-3k65znBiCt0JkA6K2_8dOvgkrEihlFASeXop3uVQ9q-3AOnprJAkRoUhO9jg';
 
 async function sendRequest(url, data) {
     const csrftoken = getCookie('csrftoken');

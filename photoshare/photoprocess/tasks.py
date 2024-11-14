@@ -19,7 +19,7 @@ from django.contrib.auth import get_user_model
 from webpush import send_group_notification
 from django_redis import get_redis_connection
 
-from .models import Photo, PendingApprovalPhoto, Block, Notification
+from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -242,6 +242,7 @@ def send_push_message_to_all(user_id, uploadedPhotoscount):
         with open(resized_image_path, 'wb') as f:
             f.write(image_io.getvalue())
 
+        #WEB서버 주소가 필요.
         payload = {
             "head": "새 사진",
             "body": f"{user.username}님의 사진{uploadedPhotoscount}개 업로드",
@@ -285,7 +286,7 @@ def convert_file_to_animation(self, file_path, temp_dir, file_uuid, start_time, 
     try:
         filename = os.path.basename(file_path)
         output_filename = f"{file_uuid}.{file_format}"
-        output_path = os.path.join('/home/test/photoshare/photoshare/photos/converts', output_filename)
+        output_path = os.path.join('./photos/converts', output_filename)
         
         start_time = float(start_time)
         end_time = float(end_time)
