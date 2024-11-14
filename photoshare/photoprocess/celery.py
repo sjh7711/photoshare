@@ -4,7 +4,7 @@ from celery import Celery
 from django.conf import settings
 
 # Django 설정 모듈을 Celery의 기본값으로 설정
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'photoshare.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 
 # Celery 앱 생성
 app = Celery('photoprocess')

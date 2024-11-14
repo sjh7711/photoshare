@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 소스 코드 복사
-COPY photoshare/settings.py /app/photoshare/photoshare/settings.py
+COPY config /app/photoshare/config
 COPY photos /app/photoshare/photos
 COPY photoprocess /app/photoshare/photoprocess
 COPY manage.py /app/photoshare/manage.py

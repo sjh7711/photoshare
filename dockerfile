@@ -20,4 +20,4 @@ COPY . .
 RUN mkdir -p /app/photoshare/photos/temp /app/photoshare/photos/uploads /app/photoshare/photos/trashcan /app/photoshare/photos/converts /app/photoshare/static 
 
 # Gunicorn 실행
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--chdir", "/app/photoshare", "photoshare.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--chdir", "/app/photoshare", "config.wsgi:application"]

@@ -93,12 +93,17 @@ LOGGING = {
 
 ALLOWED_HOSTS = ['192.168.0.225', '127.0.0.1', 'localhost']
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://192.168.0.225',
+    'https://192.168.0.225',
+]
+
 # Application definition
 
 INSTALLED_APPS = [
-    'photoprocess',
-    'photoshare',
+    'config',
     'photos',
+    'photoprocess',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -126,7 +131,7 @@ MIDDLEWARE = [
     'photos.middleware.UpdateLastActivityMiddleware',
 ]
 
-ROOT_URLCONF = 'photoshare.urls'
+ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
     {
@@ -144,7 +149,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'photoshare.wsgi.application'
+WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Database
