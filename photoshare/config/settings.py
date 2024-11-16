@@ -63,7 +63,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
+            'filename': os.path.join(BASE_DIR, './log/debug.log'),
             'formatter': 'verbose',
             'filters': ['request'],
         },
@@ -91,12 +91,10 @@ LOGGING = {
     },
 }
 
-ALLOWED_HOSTS = ['192.168.0.225', '127.0.0.1', 'localhost']
+from socket import gethostname, gethostbyname_ex
+ALLOWED_HOSTS = [ gethostname(), ] + list(set(gethostbyname_ex(gethostname())[2]))
 
-CSRF_TRUSTED_ORIGINS = [
-    'http://192.168.0.225',
-    'https://192.168.0.225',
-]
+CSRF_TRUSTED_ORIGINS = ['http://10.10.{}.{}'.format(i,j) for i in range(256) for j in range(256)]
 
 # Application definition
 

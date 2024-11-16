@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # temp 및 uploads 디렉토리 생성
-RUN mkdir -p /app/photoshare/photos/temp /app/photoshare/photos/uploads /app/photoshare/photos/trashcan /app/photoshare/photos/converts /app/photoshare/static 
+RUN mkdir -p /app/photoshare/photos/temp /app/photoshare/photos/uploads /app/photoshare/photos/trashcan /app/photoshare/photos/converts /app/photoshare/static /app/photoshare/log 
 
 # Gunicorn 실행
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--chdir", "/app/photoshare", "config.wsgi:application"]

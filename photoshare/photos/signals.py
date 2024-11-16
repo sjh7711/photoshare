@@ -42,9 +42,9 @@ def create_notification(sender, instance, created, **kwargs):
         payload = {
             "head": f"{instance.user.username}님의 댓글",
             "body": instance.text,
-            "badge": "https://192.168.0.225/static/favicon/badge.png",
-            "icon": "https://192.168.0.225/static/favicon/android-icon-96x96.png",
-            "url": f"https://192.168.0.225/photo/{instance.photo.id}",
+            "badge": "https://192.168.0.203/static/favicon/badge.png",
+            "icon": "https://192.168.0.203/static/favicon/android-icon-96x96.png",
+            "url": f"https://192.168.0.203/photo/{instance.photo.id}",
             "tag": "comment"
         }
     
