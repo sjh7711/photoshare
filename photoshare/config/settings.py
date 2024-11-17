@@ -94,7 +94,17 @@ LOGGING = {
 from socket import gethostname, gethostbyname_ex
 ALLOWED_HOSTS = ['192.168.0.200', '192.168.0.201', '192.168.0.202', '192.168.0.203', '192.168.0.210', '192.168.0.211', '192.168.0.212', '192.168.0.213', 'hoegiphoto.shop']
 #[ gethostname(), ] + list(set(gethostbyname_ex(gethostname())[2])) + 
-CSRF_TRUSTED_ORIGINS = ['192.168.0.200', '192.168.0.201', '192.168.0.202', '192.168.0.203', '192.168.0.210', '192.168.0.211', '192.168.0.212', '192.168.0.213', 'hoegiphoto.shop']
+CSRF_TRUSTED_ORIGINS = [
+    'https://192.168.0.200',
+    'https://192.168.0.201',
+    'https://192.168.0.202',
+    'https://192.168.0.203',
+    'https://192.168.0.210',
+    'https://192.168.0.211',
+    'https://192.168.0.212',
+    'https://192.168.0.213',
+    'https://hoegiphoto.shop',
+]
 #['http://10.10.{}.{}'.format(i,j) for i in range(256) for j in range(256)]
 
 # Application definition
