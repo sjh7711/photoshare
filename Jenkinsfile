@@ -1,11 +1,10 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_IMAGE = 'photoshare'
-        HARBOR_REGISTRY = '192.168.0.223'
-        HARBOR_PROJECT = 'photoshare'
-        HARBOR_CREDENTIALS = credentials('harbor')
+        DOCKER_REGISTRY = "192.168.0.223"
+        DOCKER_CREDENTIALS_ID = "harbor" // Jenkins에 저장된 Docker 자격 증명 ID
+        IMAGE_NAME = "photoshare/photoshare"
     }
     
     stages {
@@ -16,20 +15,12 @@ pipeline {
             }
         }
         
-        stage('Build Docker Image') {
+        stage('Build and Push to Harbor') {
             steps {
                 script {
-                    def dockerImage = docker.build("${HARBOR_REGISTRY}/${HARBOR_PROJECT}/${DOCKER_IMAGE}:${BUILD_NUMBER}")
-                }
-            }
-        }
-        
-        stage('Push to Harbor') {
-            steps {
-                script {
-                    docker.withRegistry("https://${HARBOR_REGISTRY}", 'harbor-credentials') {
-                        dockerImage.push()
-                        dockerImage.push('latest')
+                    docker.withRegistry("http://${DOCKER_REGISTRY}", DOCKER_CREDENTIALS_ID) {
+                        def app = docker.build("${DOCKER_REGISTRY}/${IMAGE_NAME}:${BUILD_NUMBER}")
+                        app.push()
                     }
                 }
             }
