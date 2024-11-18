@@ -120,7 +120,6 @@ def process_file(file_path, description, user_id):
         photo = Photo(image=image_file, description=description, uploaded_by=user)
         
         if similar_filename:
-            savedpath = 'photos/uploads/' + os.path.basename(process_path)
             pending_photo = PendingApprovalPhoto(
                 description=description,
                 user=user,
@@ -254,9 +253,9 @@ def send_push_message_to_all(user_id, uploadedPhotoscount):
         payload = {
             "head": "새 사진",
             "body": f"{user.username}님의 사진{uploadedPhotoscount}개 업로드",
-            "badge": "https://192.168.0.225/static/favicon/badge.png",
-            "icon": "https://192.168.0.225/static/favicon/android-icon-96x96.png",
-            "image": f"https://192.168.0.225/resized_icon/{lastPhoto.id}.png",
+            "badge": "https://hoegiphoto.shop/static/favicon/badge.png",
+            "icon": "https://hoegiphoto.shop/static/favicon/android-icon-96x96.png",
+            "image": f"https://hoegiphoto.shop/resized_icon/{lastPhoto.id}.png",
             "url": "/",
             "tag": "photo_upload"
         }
