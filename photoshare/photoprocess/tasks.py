@@ -108,14 +108,14 @@ def process_file(file_path, description, user_id):
             file_content = file.read()
         
         if file_extension in ['.gif', '.avif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg'] or (file_extension == '.webp' and Image.open(process_path).n_frames > 1):
-            image_file = ContentFile(file_content, name=os.path.basename(process_path))
+            image_file = ContentFile(file_content, name=get_server_ip()+"_"+os.path.basename(process_path))
         else:
             image = Image.open(io.BytesIO(file_content))
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             jpeg_image_io = io.BytesIO()
             image.save(jpeg_image_io, format='JPEG', quality=85)
-            image_file = ContentFile(jpeg_image_io.getvalue(), name=f"{os.path.splitext(os.path.basename(process_path))[0]}_{get_server_ip()}.jpeg")
+            image_file = ContentFile(jpeg_image_io.getvalue(), name=get_server_ip()+"_"+f"{os.path.splitext(os.path.basename(process_path))[0]}.jpeg")
         
         photo = Photo(image=image_file, description=description, uploaded_by=user)
         
