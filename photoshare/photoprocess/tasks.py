@@ -134,7 +134,7 @@ def process_file(file_path, description, user_id):
             photo.save()
             os.remove(process_path)
             # 이미지 해시를 Redis에 저장
-            save_image_hash_to_redis(f"{'photos/uploads/'}{os.path.basename(photo.image.path)}", image_hash)
+            save_image_hash_to_redis(photo.image.path, image_hash)
         
         
     except Exception as e:
