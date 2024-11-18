@@ -188,14 +188,13 @@ def get_photo_data(request):
     
     return JsonResponse(data)
 
-# import socket
-# def get_server_ip():
-#     hostname = socket.gethostname()
-#     ip_address = socket.gethostbyname(hostname)
-#     return ip_address
+import socket
+def get_server_ip():
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    return ip_address
 
 def photo_list(request):
-    #server_ip = get_server_ip()
     sort = request.GET.get('sort', 'latest')
     query_description = request.GET.get('query_description', '')
     query_username = request.GET.get('query_username', '')
@@ -612,6 +611,7 @@ def upload_photo(request):
                     file_paths.append(file_path)
                     file_descriptions.append(description)
                 
+                logger.info(get_server_ip(), f"request: {request.user.username} is processing {len(files)} photos")
                 try:
                     process_and_save_photos.delay(file_paths, file_descriptions, request.user.id, preserve_order)
                 except Exception as e:
