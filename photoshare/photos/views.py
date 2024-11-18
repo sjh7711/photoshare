@@ -804,7 +804,7 @@ def download_liked_photos(request):
             photos = photos.filter(uploaded_by__username__icontains=query)
     
     zip_filename = "liked_photos.zip"
-    zip_filepath = os.path.join(settings.MEDIA_ROOT, zip_filename)
+    zip_filepath = os.path.abspath(zip_filename)
 
     with zipfile.ZipFile(zip_filepath, 'w') as zip_file:
         for photo in photos:
@@ -936,9 +936,9 @@ def delete_photos(request):
         photo_ids = [id.strip() for id in photo_ids[0].split(',') if id.strip()] if len(photo_ids) == 1 else [id.strip() for id in photo_ids if id.strip()]
         photos = Photo.objects.filter(id__in=photo_ids, uploaded_by=request.user)
         for photo in photos:
-            # 파일 경로 가져오기
-            file_path = os.path.join(settings.MEDIA_ROOT, photo.image.path)
-            deleteFilePath = os.path.join(settings.MEDIA_ROOT, 'photos/trashcan') + "/" + os.path.basename(file_path)
+            # 파일 경로 가져오기 photo.image.path 예시 -> /app/photoshare/photos/uploads/28.gif
+            file_path = os.path.abspath(photo.image.path)
+            deleteFilePath = os.path.abspath('photos/trashcan') + "/" + os.path.basename(file_path)
             
             logger.info(file_path, deleteFilePath)
 
@@ -948,7 +948,7 @@ def delete_photos(request):
             photo.delete()
             
             try:
-                redis_key = photo.image.path
+                redis_key = 'photos/uploads/' + os.path.basename(photo.image.path)
                 checkname = redis_conn4.get(redis_key)
                 if checkname != None:
                     redis_conn4.delete(redis_key)
@@ -972,9 +972,9 @@ def delete_photo(request, photo_id):
     # previous_page = request.POST.get('previous_page', '/')
     
     if request.user == photo.uploaded_by or request.user.is_superuser:
-        file_path = os.path.join(settings.MEDIA_ROOT, photo.image.path)
+        file_path = os.path.abspath(photo.image.path)
         
-        deleteFilePath = os.path.join(settings.MEDIA_ROOT, 'photos/trashcan') + "/" + os.path.basename(file_path)
+        deleteFilePath = os.path.abspath('photos/trashcan') + "/" + os.path.basename(file_path)
         if os.path.exists(file_path):
             shutil.move(file_path, deleteFilePath)
             
@@ -1415,7 +1415,7 @@ def cleanup_files(request):
     roots = ['photos/uploads', 'photos/converts']
     
     for directory in roots:
-        uploads_dir = os.path.join(settings.MEDIA_ROOT, directory)
+        uploads_dir = os.path.abs(directory)
         uploaded_files = set(os.path.join(directory, file) for file in os.listdir(uploads_dir))
         db_files = set(Photo.objects.values_list('image', flat=True))
         files_to_delete = uploaded_files - db_files
@@ -1424,8 +1424,8 @@ def cleanup_files(request):
 
         for file_name in files_to_delete:
             if os.path.isfile(file_name):
-                shutil.move(file_name, os.path.join(settings.MEDIA_ROOT, 'photos/trashcan'))
-                logger.info(f'이동된 파일: {file_name}\n이동된 경로: {os.path.abspath(os.path.join(settings.MEDIA_ROOT, "photos/trashcan/" + os.path.basename(file_name)))}')
+                shutil.move(file_name, os.path.abspath('photos/trashcan'))
+                logger.info(f'이동된 파일: {file_name}\n이동된 경로: {os.path.abspath(file_name)}')
                 deleted_files_count += 1
 
     return JsonResponse({'message': f'파일 정리가 완료되었습니다. {deleted_files_count}개의 파일이 정리되었습니다.'})
@@ -1440,7 +1440,7 @@ def convert_images(request):
     roots = ['photos/uploads']
     
     for root in roots:
-        uploads_dir = os.path.join(settings.MEDIA_ROOT, root)
+        uploads_dir = os.path.abspath(root)
         for file_name in os.listdir(uploads_dir):
             file_path = os.path.join(uploads_dir, file_name)
             # jpeg, gif 파일이 아닌 경우 변환
@@ -1706,8 +1706,8 @@ def reject_photo(request):
         pending_photo = PendingApprovalPhoto.objects.get(id=photo_id)
         photo = Photo.objects.get(image=pending_photo.pending_photo_path)
         
-        file_path = os.path.join(settings.MEDIA_ROOT, photo.image.path)
-        deleteFilePath = os.path.join(settings.MEDIA_ROOT, 'photos/trashcan') + "/" + os.path.basename(file_path)
+        file_path = os.path.abspath(photo.image.path)
+        deleteFilePath = os.path.abspath('photos/trashcan') + "/" + os.path.basename(file_path)
 
         if os.path.exists(file_path):
             shutil.move(file_path, deleteFilePath)
