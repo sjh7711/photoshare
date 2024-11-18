@@ -70,6 +70,8 @@ def check_device_id(request):
             return JsonResponse({'error': 'device_id not provided'}, status=400)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
 
+
+#PushInformation 에 device_id = models.CharField(max_length=255, default='default_device_id') 추가 후 migration 필요
 @csrf_exempt
 @login_required
 def save_subscription(request):
@@ -946,7 +948,7 @@ def delete_photos(request):
             try:
                 redis_key = photo.image.path
                 checkname = redis_conn4.get(redis_key)
-                if checkname is not None:
+                if checkname != None:
                     redis_conn4.delete(redis_key)
                     #logger.info(f"delete redis key\nredisKey: {checkname}\nPhoto: {photo.image.path}")
                 else:
@@ -979,7 +981,7 @@ def delete_photo(request, photo_id):
         try:
             redis_key = photo.image.path
             checkname = redis_conn4.get(redis_key)
-            if checkname is not None:
+            if checkname != None:
                 redis_conn4.delete(redis_key)
                 #logger.info(f"delete redis key\nredisKey: {checkname}\nPhoto: {photo.image.path}")
             else:
@@ -1571,7 +1573,7 @@ def get_resource_data(request):
             cached_data = redis_conn3.get(f'resource:{timestamp}')
             if cached_data:
                 resource_data = json.loads(cached_data)
-                if prev_net_upload is not None and prev_net_download is not None and prev_timestamp is not None:
+                if prev_net_upload != None and prev_net_download != None and prev_timestamp != None:
                     time_diff = timestamp - prev_timestamp
                     net_upload_rate = max(0, (resource_data['net_upload'] - prev_net_upload) / time_diff / 1024 / 1024)  # MB/s
                     net_download_rate = max(0, (resource_data['net_download'] - prev_net_download) / time_diff / 1024 / 1024)  # MB/s
@@ -1613,7 +1615,7 @@ def get_high_cpu_times(request):
             if cached_data:
                 resource_data = json.loads(cached_data)
                 if resource_data['cpu'] > threshold:
-                    if prev_net_upload is not None and prev_net_download is not None and prev_timestamp is not None:
+                    if prev_net_upload != None and prev_net_download != None and prev_timestamp != None:
                         time_diff = timestamp - prev_timestamp
                         net_upload_rate = max(0, (resource_data['net_upload'] - prev_net_upload) / time_diff / 1024 / 1024)  # MB/s
                         net_download_rate = max(0, (resource_data['net_download'] - prev_net_download) / time_diff / 1024 / 1024)  # MB/s
@@ -1665,7 +1667,7 @@ def approve_photo(request):
                 photo = Photo(image=original_file, description=pending_photo.description, uploaded_by=pending_photo.user, uploaded_at=pending_photo.uploaded_at)
                 
             else:
-                if image.mode is not 'RGB':
+                if image.mode != 'RGB':
                     image = image.convert('RGB')
                 jpeg_image_io = io.BytesIO()
                 image.save(jpeg_image_io, format='JPEG', quality=85)
