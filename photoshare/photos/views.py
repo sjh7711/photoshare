@@ -186,14 +186,14 @@ def get_photo_data(request):
     
     return JsonResponse(data)
 
-import socket
-def get_server_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
+# import socket
+# def get_server_ip():
+#     hostname = socket.gethostname()
+#     ip_address = socket.gethostbyname(hostname)
+#     return ip_address
 
 def photo_list(request):
-    server_ip = get_server_ip()
+    #server_ip = get_server_ip()
     sort = request.GET.get('sort', 'latest')
     query_description = request.GET.get('query_description', '')
     query_username = request.GET.get('query_username', '')
@@ -281,7 +281,7 @@ def photo_list(request):
         'uploaders': uploaders,
         'active_users': active_users,
         'notifications': notifications,
-        'server_ip': server_ip
+        #'server_ip': server_ip
     })
 
 @login_required
