@@ -155,7 +155,7 @@ def process_file(file_path, description, user_id):
             logger.error(f"Error updating Redis: {str(e)}")
 
 @shared_task
-def finalize_processing(results, user_id, photoscount):
+def finalize_processing(user_id, photoscount, results):
     User = get_user_model()
     user = User.objects.get(id=user_id)
     
