@@ -1273,7 +1273,7 @@ def admin_page(request):
         pending_photo.pendig_photo_url = "photo/" + str(pendingPhotoId.id)
         
     
-    log_file_path = 'debug.log'
+    log_file_path = './log/debug.log'
     
     for user in recent_users:
         user.photos = Photo.objects.filter(uploaded_by=user)
@@ -1462,7 +1462,7 @@ def convert_images(request):
 
 @superuser_required
 def clear_log(request):
-    log_file_path = 'debug.log'
+    log_file_path = './log/debug.log'
     if request.method == 'POST':
         try:
             with open(log_file_path, 'w') as log_file:

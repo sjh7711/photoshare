@@ -23,6 +23,7 @@ from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 # 전역 변수로 ThreadPoolExecutor 생성
 executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
