@@ -939,6 +939,8 @@ def delete_photos(request):
             # 파일 경로 가져오기
             file_path = os.path.join(settings.MEDIA_ROOT, photo.image.path)
             deleteFilePath = os.path.join(settings.MEDIA_ROOT, 'photos/trashcan') + "/" + os.path.basename(file_path)
+            
+            logger.info(file_path, deleteFilePath)
 
             if os.path.exists(file_path):
                 shutil.move(file_path, deleteFilePath)
@@ -950,11 +952,11 @@ def delete_photos(request):
                 checkname = redis_conn4.get(redis_key)
                 if checkname != None:
                     redis_conn4.delete(redis_key)
-                    #logger.info(f"delete redis key\nredisKey: {checkname}\nPhoto: {photo.image.path}")
+                    logger.info(f"delete redis key(none checkname)\nredisKey: {redis_key}\nPhoto: {photo.image.path}")
                 else:
                     pendingPhoto = PendingApprovalPhoto.objects.get(pending_photo_path=redis_key)
                     pendingPhoto.delete()
-                    #logger.info("similar photo is deleted")
+                    logger.info(f"delete redis key\nredisKey: {redis_key}\ncheckname: {checkname}\nPhoto: {photo.image.path}")
             except Exception as e:
                 logger.info(f"deleteRedisError Checkname: {checkname}\nPhoto: {photo.image.path}")
             
