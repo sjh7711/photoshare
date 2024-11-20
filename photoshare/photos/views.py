@@ -610,6 +610,8 @@ def upload_photo(request):
                     file_path = os.path.join(temp_dir, filename)
                     file_paths.append(file_path)
                     file_descriptions.append(description)
+                    
+                logger.info(file_paths)
                 
                 logger.info(get_server_ip(), f"request: {request.user.username} is processing {len(files)} photos")
                 try:

@@ -86,7 +86,7 @@ LOGGING = {
         },
         'celery': {
             'handlers': ['file'],
-            'level': 'INFO',
+            'level': 'DEBUG',
         },
     },
 }

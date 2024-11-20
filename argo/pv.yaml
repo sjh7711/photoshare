@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-temp-pv
+  labels:
+    pv-name: photoshare-temp-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/temp
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-uploads-pv
+  labels:
+    pv-name: photoshare-uploads-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/uploads
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-converts-pv
+  labels:
+    pv-name: photoshare-converts-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/converts
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-trashcan-pv
+  labels:
+    pv-name: photoshare-trashcan-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/trashcan
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-static-pv
+  labels:
+    pv-name: photoshare-static-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/static
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-resizedicon-pv
+  labels:
+    pv-name: photoshare-resizedicon-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/resized_icon
+    server: 192.168.0.221
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: photoshare-log-pv
+  labels:
+    pv-name: photoshare-log-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: /mnt/NFS/NFS/log
+    server: 192.168.0.221

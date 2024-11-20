@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: celery
+  template:
+    metadata:
+      labels:
+        app: celery
+    spec:
+      containers:
+      - name: celery
+        image: 192.168.0.223/photosharecelery/photosharecelery:33
+        envFrom:
+        - secretRef:
+            name: django-secret
+        volumeMounts:
+        - name: temp-volume
+          mountPath: /app/photoshare/photos/temp
+        - name: uploads-volume
+          mountPath: /app/photoshare/photos/uploads
+        - name: converts-volume
+          mountPath: /app/photoshare/photos/converts
+        - name: resizedicon-volume
+          mountPath: /app/photoshare/photos/resized_icon
+        - name: log-volume
+          mountPath: /app/photoshare/photos/log
+      volumes:
+      - name: temp-volume
+        persistentVolumeClaim:
+          claimName: photoshare-temp-pvc
+      - name: uploads-volume
+        persistentVolumeClaim:
+          claimName: photoshare-uploads-pvc
+      - name: converts-volume
+        persistentVolumeClaim:
+          claimName: photoshare-converts-pvc
+      - name: resizedicon-volume
+        persistentVolumeClaim:
+          claimName: photoshare-resizedicon-pvc
+      - name: log-volume
+        persistentVolumeClaim:
+          claimName: photoshare-log-pvc

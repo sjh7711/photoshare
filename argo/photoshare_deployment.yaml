@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: photoshare
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: photoshare
+  template:
+    metadata:
+      labels:
+        app: photoshare
+    spec:
+      containers:
+      - name: photoshare
+        image: 192.168.0.223/photoshare/photoshare:33
+        ports:
+        - containerPort: 8000
+        envFrom:
+        - secretRef:
+            name: django-secret
+        volumeMounts:
+        - name: temp-volume
+          mountPath: /app/photoshare/photos/temp
+        - name: uploads-volume
+          mountPath: /app/photoshare/photos/uploads
+        - name: converts-volume
+          mountPath: /app/photoshare/photos/converts
+        - name: trashcan-volume
+          mountPath: /app/photoshare/photos/trashcan
+        - name: static-volume
+          mountPath: /app/photoshare/photos/static
+        - name: log-volume
+          mountPath: /app/photoshare/log
+      volumes:
+      - name: temp-volume
+        persistentVolumeClaim:
+          claimName: photoshare-temp-pvc
+      - name: uploads-volume
+        persistentVolumeClaim:
+          claimName: photoshare-uploads-pvc
+      - name: converts-volume
+        persistentVolumeClaim:
+          claimName: photoshare-converts-pvc
+      - name: trashcan-volume
+        persistentVolumeClaim:
+          claimName: photoshare-trashcan-pvc
+      - name: static-volume
+        persistentVolumeClaim:
+          claimName: photoshare-static-pvc
+      - name: log-volume
+        persistentVolumeClaim:
+          claimName: photoshare-log-pvc
