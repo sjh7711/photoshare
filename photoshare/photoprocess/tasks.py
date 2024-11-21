@@ -22,8 +22,10 @@ from django_redis import get_redis_connection
 from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
 # 로깅 설정
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.DEBUG)
+
+error_log_file = open(f'error_log.txt', 'w')
 
 # 전역 변수로 ThreadPoolExecutor 생성
 executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
@@ -59,23 +61,17 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
     else:
         return None
 
-
-import socket
-def get_server_ip():
-    hostname = socket.gethostname()
-    ip_address = socket.gethostbyname(hostname)
-    return ip_address
-
 @shared_task
 def process_file(file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
-    
-    #logger.info(f"Processing file {file_path} for user {user.username}")
+
+    #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
+    error_log_file.write(f"Processing file {file_path} for user {user.username}")
     
     try:
         if not os.path.exists(file_path):
-            #logger.info(f"File not found: {file_path}")
+            error_log_file.write(f"File not found: {file_path}")
             return
         
         file_extension = os.path.splitext(file_path)[1].lower()
@@ -94,7 +90,7 @@ def process_file(file_path, description, user_id):
                 subprocess.run(command, check=True)
                 os.remove(file_path)
             except Exception as e:
-                #logger.error(f"Error while converting video to WebP: {e}")
+                error_log_file.write(f"Error while converting video to AVIF: {e}")
                 return None
             process_path = avif_file_path
         else:
@@ -146,16 +142,14 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
-        #logger.error(f"Error processing file {file_path}: {str(e)}")
-        pass
+        error_log_file.write(f"Error processing file {file_path}: {str(e)}")
     
     finally:
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
         except Exception as e:
-            #logger.error(f"Error updating Redis: {str(e)}")
-            pass
+            error_log_file.write(f"Error updating Redis: {str(e)}")
 
 @shared_task
 def finalize_processing(user_id, photoscount, results):
@@ -184,7 +178,7 @@ def finalize_processing(user_id, photoscount, results):
                 )
         photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
         uploadedPhotoscount = photoscountafter - photoscount
-        #logger.info(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
+        error_log_file.write(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
         if photoscountafter > photoscount:
             send_push_message_to_all(user_id, uploadedPhotoscount)
         
@@ -193,21 +187,18 @@ def finalize_processing(user_id, photoscount, results):
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            #logger.error(f"Error deleting Redis keys: {e}")
+            error_log_file.write(f"Error deleting Redis keys: {e}")
             pass
         
     except Exception as e:
-        #logger.error(f"Error processing files: {e}")
+        error_log_file.write(f"Error processing files: {e}")
         pass
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
     total_files = len(file_paths)
-    
-    #에러 로깅을 위한 파일 생성
-    error_log_file = open(f'error_log_{user_id}.txt', 'w')
-    #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
+
     error_log_file.write(f"Starting to process {len(file_paths)} files for user {user_id}\n")
     
     redis_conn = get_redis_connection("default")
