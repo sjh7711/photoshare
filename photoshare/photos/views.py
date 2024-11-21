@@ -613,7 +613,6 @@ def upload_photo(request):
                     
                 logger.info(file_paths)
                 
-                logger.info(get_server_ip(), f"request: {request.user.username} is processing {len(files)} photos")
                 try:
                     for file_path, file_description in zip(file_paths, file_descriptions):
                         process_and_save_photos.delay(file_path, file_description, request.user.id, preserve_order)
