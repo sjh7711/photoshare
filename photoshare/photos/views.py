@@ -614,9 +614,7 @@ def upload_photo(request):
                 logger.info(file_paths)
                 
                 try:
-                    for file_path, file_description in zip(file_paths, file_descriptions):
-                        process_and_save_photos.delay(file_path, file_description, request.user.id, preserve_order)
-                    
+                    process_and_save_photos.delay(file_paths, file_descriptions, request.user.id, preserve_order)
                 except Exception as e:
                     logger.error(f"Error sending task to Celery: {e}", exc_info=True)
                     return render(request, 'photos/photo_upload.html', {'form': form, 'error': f"Could not start processing: {e}"})

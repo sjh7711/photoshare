@@ -201,7 +201,7 @@ def finalize_processing(user_id, photoscount, results):
         pass
 
 @shared_task
-def process_and_save_photos(file_paths, descriptions, user_id=1, preserve_order=False):
+def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
     total_files = len(file_paths)
     logger.info(f"Starting to process {len(file_paths)} files for user {user_id}")
