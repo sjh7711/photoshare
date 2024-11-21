@@ -202,37 +202,29 @@ def finalize_processing(user_id, photoscount, results):
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
-    redis_conn = get_redis_connection("default")
-    lock = redis_conn.lock("photo_processing_lock", timeout=3600)  # 1시간 타임아웃 
+    photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
+    total_files = len(file_paths)
     
-    try:
-        # Lock 획득 시도 (최대 30초)
-        if not lock.acquire(blocking=True, blocking_timeout=30):
-            return "Another process is currently running. Please try again later."
-            
-        photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
-        total_files = len(file_paths)
-        logger.info(f"Starting to process {len(file_paths)} files for user {user_id}")
-        
-        redis_conn.set(f"photo_upload_progress:{user_id}", 0)
-        redis_conn.set(f"photo_upload_total:{user_id}", total_files)
+    #에러 로깅을 위한 파일 생성
+    error_log_file = open(f'error_log_{user_id}.txt', 'w')
+    #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
+    error_log_file.write(f"Starting to process {len(file_paths)} files for user {user_id}\n")
+    
+    redis_conn = get_redis_connection("default")
+    
+    redis_conn.set(f"photo_upload_progress:{user_id}", 0)
+    redis_conn.set(f"photo_upload_total:{user_id}", total_files)
 
-        if preserve_order == 'true':
-            tasks = [process_file.s(file_path, description, user_id) 
-                     for file_path, description in zip(file_paths, descriptions)]
-            chord(tasks)(finalize_processing.s(user_id, photoscount))
-        else:
-            tasks = [process_file.s(file_path, description, user_id,) 
-                     for file_path, description in zip(file_paths, descriptions)]
-            chord(group(tasks))(finalize_processing.s(user_id, photoscount))
+    if preserve_order == 'true':
+        tasks = [process_file.s(file_path, description, user_id) 
+                 for file_path, description in zip(file_paths, descriptions)]
+        chord(tasks)(finalize_processing.s(user_id, photoscount))
+    else:
+        tasks = [process_file.s(file_path, description, user_id,) 
+                 for file_path, description in zip(file_paths, descriptions)]
+        chord(group(tasks))(finalize_processing.s(user_id, photoscount))
 
-        return "Processing started"
-        
-    finally:
-        try:
-            lock.release()
-        except:
-            pass
+    return "Processing started"
 
 def send_push_message_to_all(user_id, uploadedPhotoscount):
     User = get_user_model()
