@@ -71,11 +71,11 @@ def process_file(file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
     
-    logger.info(f"Processing file {file_path} for user {user.username}")
+    #logger.info(f"Processing file {file_path} for user {user.username}")
     
     try:
         if not os.path.exists(file_path):
-            logger.info(f"File not found: {file_path}")
+            #logger.info(f"File not found: {file_path}")
             return
         
         file_extension = os.path.splitext(file_path)[1].lower()
@@ -94,7 +94,7 @@ def process_file(file_path, description, user_id):
                 subprocess.run(command, check=True)
                 os.remove(file_path)
             except Exception as e:
-                logger.error(f"Error while converting video to WebP: {e}")
+                #logger.error(f"Error while converting video to WebP: {e}")
                 return None
             process_path = avif_file_path
         else:
@@ -146,14 +146,16 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
-        logger.error(f"Error processing file {file_path}: {str(e)}")
+        #logger.error(f"Error processing file {file_path}: {str(e)}")
+        pass
     
     finally:
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
         except Exception as e:
-            logger.error(f"Error updating Redis: {str(e)}")
+            #logger.error(f"Error updating Redis: {str(e)}")
+            pass
 
 @shared_task
 def finalize_processing(user_id, photoscount, results):
@@ -182,7 +184,7 @@ def finalize_processing(user_id, photoscount, results):
                 )
         photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
         uploadedPhotoscount = photoscountafter - photoscount
-        logger.info(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
+        #logger.info(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
         if photoscountafter > photoscount:
             send_push_message_to_all(user_id, uploadedPhotoscount)
         
@@ -191,10 +193,12 @@ def finalize_processing(user_id, photoscount, results):
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            logger.error(f"Error deleting Redis keys: {e}")
+            #logger.error(f"Error deleting Redis keys: {e}")
+            pass
         
     except Exception as e:
-        logger.error(f"Error processing files: {e}")
+        #logger.error(f"Error processing files: {e}")
+        pass
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
