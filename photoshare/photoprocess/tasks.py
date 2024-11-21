@@ -71,6 +71,8 @@ def process_file(file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
     
+    logger.info(f"Processing file {file_path} for user {user.username}")
+    
     try:
         if not os.path.exists(file_path):
             logger.info(f"File not found: {file_path}")
@@ -198,7 +200,7 @@ def finalize_processing(user_id, photoscount, results):
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
     total_files = len(file_paths)
-    
+    logger.info(f"Starting to process {len(file_paths)} files for user {user_id}")
     redis_conn = get_redis_connection("default")
     
     redis_conn.set(f"photo_upload_progress:{user_id}", 0)
