@@ -610,8 +610,6 @@ def upload_photo(request):
                     file_path = os.path.join(temp_dir, filename)
                     file_paths.append(file_path)
                     file_descriptions.append(description)
-                    
-                logger.info(file_paths)
                 
                 try:
                     process_and_save_photos.delay(file_paths, file_descriptions, request.user.id, preserve_order)
