@@ -65,13 +65,13 @@ def process_file(file_path, description, user_id):
     user = User.objects.get(id=user_id)
 
     #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
-    error_log_file = open(f'error_log.txt', 'w')
+    error_log_file = open(f'error_log.txt', 'a')
     error_log_file.write(f"Processing file {file_path} for user {user.username}")
     error_log_file.close()
     
     try:
         if not os.path.exists(file_path):
-            error_log_file = open(f'error_log.txt', 'w')
+            error_log_file = open(f'error_log.txt', 'a')
             error_log_file.write(f"File not found: {file_path}")
             error_log_file.close()
             return
@@ -92,7 +92,7 @@ def process_file(file_path, description, user_id):
                 subprocess.run(command, check=True)
                 os.remove(file_path)
             except Exception as e:
-                error_log_file = open(f'error_log.txt', 'w')
+                error_log_file = open(f'error_log.txt', 'a')
                 error_log_file.write(f"Error while converting video to AVIF: {e}")
                 error_log_file.close()
                 return None
@@ -146,7 +146,7 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
-        error_log_file = open(f'error_log.txt', 'w')
+        error_log_file = open(f'error_log.txt', 'a')
         error_log_file.write(f"Error processing file {file_path}: {str(e)}")
         error_log_file.close()
     
@@ -155,7 +155,7 @@ def process_file(file_path, description, user_id):
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
         except Exception as e:
-            error_log_file = open(f'error_log.txt', 'w')
+            error_log_file = open(f'error_log.txt', 'a')
             error_log_file.write(f"Error updating Redis: {str(e)}")
             error_log_file.close()
 
@@ -186,7 +186,7 @@ def finalize_processing(user_id, photoscount, results):
                 )
         photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
         uploadedPhotoscount = photoscountafter - photoscount
-        error_log_file = open(f'error_log.txt', 'w')
+        error_log_file = open(f'error_log.txt', 'a')
         error_log_file.write(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
         error_log_file.close()
         if photoscountafter > photoscount:
@@ -197,12 +197,12 @@ def finalize_processing(user_id, photoscount, results):
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            error_log_file = open(f'error_log.txt', 'w')
+            error_log_file = open(f'error_log.txt', 'a')
             error_log_file.write(f"Error deleting Redis keys: {e}")
             error_log_file.close()
         
     except Exception as e:
-        error_log_file = open(f'error_log.txt', 'w')
+        error_log_file = open(f'error_log.txt', 'a')
         error_log_file.write(f"Error processing files: {e}")
         error_log_file.close()
 
@@ -211,7 +211,7 @@ def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
     total_files = len(file_paths)
 
-    error_log_file = open(f'error_log.txt', 'w')
+    error_log_file = open(f'error_log.txt', 'a')
     error_log_file.write(f"Starting to process {len(file_paths)} files for user {user_id}\n")
     error_log_file.close()
     
