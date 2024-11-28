@@ -41,7 +41,6 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
     min_distance = float('inf')
     min_distance_filename = None
     
-    # SCAN 명령어를 사용하여 큰 데이터셋에서도 효율적으로 작동하도록 합니다.
     cursor = '0'
     while cursor != 0:
         cursor, keys = redis_conn.scan(cursor=cursor, match='*', count=100)
@@ -141,6 +140,7 @@ def process_file(file_path, description, user_id):
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
+            return process_path + " processed"
         except Exception as e:
             # logger.error(f"Error incrementing Redis key: {e}")
             pass
@@ -183,6 +183,8 @@ def finalize_processing(results, user_id, photoscount): #chord의 처리 결과�
         except Exception as e:
             # logger.error(f"Error deleting Redis keys")
             pass
+        
+        return "Processing completed"
         
     except Exception as e:
         # logger.error(f"Error finalizing processing: {e}")
