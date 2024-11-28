@@ -602,7 +602,7 @@ def upload_photo(request):
                 
                 file_paths = []
                 file_descriptions = []
-                logger.info(f"request: {request.user.username} is uploading {len(files)} photos")
+                logger.info(f"request: {request.user.username}[{request.user.id}] is uploading {len(files)} photos")
                 for i, f in enumerate(files):
                     description = descriptions[i].strip() if i < len(descriptions) else ''
                     fs = FileSystemStorage(location=temp_dir)
