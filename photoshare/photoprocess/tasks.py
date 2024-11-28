@@ -1,9 +1,6 @@
 import os
 import io
-import logging
 import subprocess
-# from concurrent.futures import ThreadPoolExecutor
-import multiprocessing
 
 from PIL import Image, ImageOps, ImageSequence
 from io import BytesIO
@@ -11,7 +8,6 @@ import imagehash
 import pillow_avif
 
 import re
-import tempfile
 
 from celery import shared_task,  group, chord
 from django.core.files.base import ContentFile
@@ -21,11 +17,6 @@ from django_redis import get_redis_connection
 
 from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
-# logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.DEBUG)
-
-# 전역 변수로 ThreadPoolExecutor 생성
-# executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
 
 def get_image_hash(image_path):
     with Image.open(image_path) as img:
@@ -64,7 +55,7 @@ def process_file(file_path, description, user_id):
     
     try:
         if not os.path.exists(file_path):
-            return
+            return "File does not exist"
         
         file_extension = os.path.splitext(file_path)[1].lower()
         
@@ -82,7 +73,7 @@ def process_file(file_path, description, user_id):
                 subprocess.run(command, check=True)
                 os.remove(file_path)
             except Exception as e:
-                return None
+                return f"Error processing video file: {e}"
             process_path = avif_file_path
         else:
             process_path = file_path
@@ -132,18 +123,19 @@ def process_file(file_path, description, user_id):
             # 이미지 해시를 Redis에 저장
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
+        result = "File processed successfully"
+    
     except Exception as e:
-        # logger.error(f"Error processing file: {e}")
-        pass
+        result = f"Error processing file: {e}"
     
     finally:
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
-            return process_path + " processed"
         except Exception as e:
-            # logger.error(f"Error incrementing Redis key: {e}")
-            pass
+            result = f"Error incrementing Redis key: {e}"
+    
+    return result
 
 @shared_task
 def finalize_processing(results, user_id, photoscount): #chord의 처리 결과를 results로 받아야함
@@ -181,14 +173,12 @@ def finalize_processing(results, user_id, photoscount): #chord의 처리 결과�
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            # logger.error(f"Error deleting Redis keys")
-            pass
-        
-        return "Processing completed"
+            result = f"Error deleting Redis keys: {e}"
         
     except Exception as e:
-        # logger.error(f"Error finalizing processing: {e}")
-        pass
+        result = f"Error finalizing processing: {e}"
+    
+    return result
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
