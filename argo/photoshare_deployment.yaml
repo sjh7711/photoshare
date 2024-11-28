@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: photoshare
-        image: 192.168.0.223/photoshare/photoshare:56
+        image: 192.168.0.223/photoshare/photoshare:57
         ports:
         - containerPort: 8000
         envFrom:
