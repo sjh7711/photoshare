@@ -59,8 +59,15 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
     else:
         return None
 
-@shared_task
-def process_file(file_path, description, user_id):
+@shared_task(
+    bind=True,
+    max_retries=3,  # 최대 재시도 횟수
+    soft_time_limit=300,  # 5분 타임아웃
+    time_limit=600,  # 하드 타임아웃 10분
+    acks_late=True,  # 작업 완료 후 승인
+    retry_backoff=True  # 지수 백오프
+)
+def process_file(self, file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
 
@@ -137,7 +144,7 @@ def process_file(file_path, description, user_id):
                 os.remove(process_path)
 
             pending_photo.save()
-            
+        
         else:
             # 비슷한 파일이 없는 경우
             photo.save()
@@ -146,6 +153,7 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
+        self.retry(exc=e, countdown=60) 
         error_log_file = open(f'error_log.txt', 'a')
         error_log_file.write(f"Error processing file {file_path}: {str(e)}")
         error_log_file.close()
