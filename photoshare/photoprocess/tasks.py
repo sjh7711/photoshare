@@ -2,7 +2,7 @@ import os
 import io
 import logging
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
+# from concurrent.futures import ThreadPoolExecutor
 import multiprocessing
 
 from PIL import Image, ImageOps, ImageSequence
@@ -25,7 +25,7 @@ from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 # logging.basicConfig(level=logging.DEBUG)
 
 # 전역 변수로 ThreadPoolExecutor 생성
-executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
+# executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
 
 def get_image_hash(image_path):
     with Image.open(image_path) as img:
