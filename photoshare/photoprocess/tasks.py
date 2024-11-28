@@ -219,13 +219,20 @@ def send_push_message_to_all(user_id, uploadedPhotoscount):
         }
         
         excludeUser = Block.objects.filter(blocked=user).values_list('blocker_id', flat=True)
-    
-        send_group_notification(
-            group_name='all_users',
-            payload=payload, 
-            ttl=1000,
-            exclude_user_id=list(excludeUser)
-        )
+        
+        if excludeUser == []:
+            send_group_notification(
+                group_name='all_users',
+                payload=payload, 
+                ttl=1000
+            )
+        else:
+            send_group_notification(
+                group_name='all_users',
+                payload=payload, 
+                ttl=1000,
+                exclude_user_id=list(excludeUser)
+            )
 
 def extract_frames(file_uuid, file_path, temp_dir):
     with Image.open(file_path) as img:
