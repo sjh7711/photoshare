@@ -59,119 +59,108 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
     else:
         return None
 
-@shared_task(
-    bind=True,
-    max_retries=3,  # 최대 재시도 횟수
-    soft_time_limit=300,  # 5분 타임아웃
-    time_limit=600,  # 하드 타임아웃 10분
-    acks_late=True,  # 작업 완료 후 승인
-    retry_backoff=True  # 지수 백오프
-)
-def process_file(self, file_path, description, user_id):
-    User = get_user_model()
-    user = User.objects.get(id=user_id)
-
-    #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
-    error_log_file = open(f'error_log.txt', 'a')
-    error_log_file.write(f"Processing file {file_path} for user {user.username}")
-    error_log_file.close()
-    
-    try:
-        if not os.path.exists(file_path):
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"File not found: {file_path}")
-            error_log_file.close()
-            return
-        
-        file_extension = os.path.splitext(file_path)[1].lower()
-        
-        # 영상 파일 처리
-        if file_extension in ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg']:
-            avif_file_path = f"{os.path.splitext(file_path)[0]}.avif" # ex) /path/to/video.mp4 -> /path/to/video.webp
-            try:
-                command = [
-                    'ffmpeg', '-i', file_path, '-c:v', 'libsvtav1', '-crf', '23', '-b:v', '0',
-                    '-cpu-used', '4', '-tile-columns', '2', '-tile-rows', '2',
-                    '-loop', '0', '-an',
-                    '-r', '20', '-threads', '0', '-vf', 'scale=\'min(800,iw)\':-2,pad=iw:ceil(ih/2)*2',
-                    '-frames:v', '600', avif_file_path
-                ]
-                subprocess.run(command, check=True)
-                os.remove(file_path)
-            except Exception as e:
-                error_log_file = open(f'error_log.txt', 'a')
-                error_log_file.write(f"Error while converting video to AVIF: {e}")
-                error_log_file.close()
-                return None
-            process_path = avif_file_path
-        else:
-            process_path = file_path
-        
-        # 이미지 해시 계산
-        image_hash = get_image_hash(process_path)
-        
-        similar_filename = check_similarity_with_redis(image_hash)
-
-        # 이미지 저장
-        with open(process_path, 'rb') as file:
-            file_content = file.read()
-        
-        if file_extension in ['.gif', '.avif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg'] or (file_extension == '.webp' and Image.open(process_path).n_frames > 1):
-            image_file = ContentFile(file_content, name=os.path.basename(process_path))
-        else:
-            image = Image.open(io.BytesIO(file_content))
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
-            jpeg_image_io = io.BytesIO()
-            image.save(jpeg_image_io, format='JPEG', quality=85)
-            image_file = ContentFile(jpeg_image_io.getvalue(), name=f"{os.path.splitext(os.path.basename(process_path))[0]}.jpeg")
-        
-        photo = Photo(image=image_file, description=description, uploaded_by=user)
-        
-        if similar_filename:
-            pending_photo = PendingApprovalPhoto(
-                description=description,
-                user=user,
-                is_rejected=False,
-                similar_photo_path=similar_filename,
-            )
-            if "uploads/deleted/" in similar_filename:
-                pending_photo.pending_photo_path = 'photos/temp/' + os.path.basename(process_path)
-            else:
-                # 기존 Photo 객체가 있는 경우
-                photo.save()
-                pending_photo.pending_photo_path = 'photos/uploads/' + os.path.basename(photo.image.path)
-                os.remove(process_path)
-
-            pending_photo.save()
-        
-        else:
-            # 비슷한 파일이 없는 경우
-            photo.save()
-            os.remove(process_path)
-            # 이미지 해시를 Redis에 저장
-            save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
-        
-    except Exception as e:
-        self.retry(exc=e, countdown=60) 
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"Error processing file {file_path}: {str(e)}")
-        error_log_file.close()
-    
-    finally:
-        try:
-            redis_conn = get_redis_connection("default")
-            redis_conn.incr(f"photo_upload_progress:{user_id}")
-        except Exception as e:
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"Error updating Redis: {str(e)}")
-            error_log_file.close()
-
 @shared_task
-def finalize_processing(user_id, photoscount, results):
+def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     User = get_user_model()
     user = User.objects.get(id=user_id)
-    
+    photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
+    total_files = len(file_paths)
+
+    error_log_file = open('error_log.txt', 'a')
+    error_log_file.write(f"Starting to process {total_files} files for user {user_id}\n")
+    error_log_file.close()
+
+    redis_conn = get_redis_connection("default")
+    redis_conn.set(f"photo_upload_progress:{user_id}", 0)
+    redis_conn.set(f"photo_upload_total:{user_id}", total_files)
+
+    for file_path, description in zip(file_paths, descriptions):
+        try:
+            if not os.path.exists(file_path):
+                error_log_file = open('error_log.txt', 'a')
+                error_log_file.write(f"File not found: {file_path}\n")
+                error_log_file.close()
+                continue
+
+            file_extension = os.path.splitext(file_path)[1].lower()
+
+            # 영상 파일 처리
+            if file_extension in ['.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg']:
+                avif_file_path = f"{os.path.splitext(file_path)[0]}.avif"
+                try:
+                    command = [
+                        'ffmpeg', '-i', file_path, '-c:v', 'libsvtav1', '-crf', '23', '-b:v', '0',
+                        '-cpu-used', '4', '-tile-columns', '2', '-tile-rows', '2',
+                        '-loop', '0', '-an',
+                        '-r', '20', '-threads', '0', '-vf', "scale='min(800,iw)':-2,pad=iw:ceil(ih/2)*2",
+                        '-frames:v', '600', avif_file_path
+                    ]
+                    subprocess.run(command, check=True)
+                    os.remove(file_path)
+                except Exception as e:
+                    error_log_file = open('error_log.txt', 'a')
+                    error_log_file.write(f"Error while converting video to AVIF: {e}\n")
+                    error_log_file.close()
+                    continue
+                process_path = avif_file_path
+            else:
+                process_path = file_path
+
+            # 이미지 해시 계산
+            image_hash = get_image_hash(process_path)
+            similar_filename = check_similarity_with_redis(image_hash)
+
+            # 이미지 저장
+            with open(process_path, 'rb') as file:
+                file_content = file.read()
+
+            if file_extension in ['.gif', '.avif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg'] or (file_extension == '.webp' and Image.open(process_path).n_frames > 1):
+                image_file = ContentFile(file_content, name=os.path.basename(process_path))
+            else:
+                image = Image.open(io.BytesIO(file_content))
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
+                jpeg_image_io = io.BytesIO()
+                image.save(jpeg_image_io, format='JPEG', quality=85)
+                image_file = ContentFile(jpeg_image_io.getvalue(), name=f"{os.path.splitext(os.path.basename(process_path))[0]}.jpeg")
+
+            photo = Photo(image=image_file, description=description, uploaded_by=user)
+
+            if similar_filename:
+                pending_photo = PendingApprovalPhoto(
+                    description=description,
+                    user=user,
+                    is_rejected=False,
+                    similar_photo_path=similar_filename,
+                )
+                if "uploads/deleted/" in similar_filename:
+                    pending_photo.pending_photo_path = 'photos/temp/' + os.path.basename(process_path)
+                else:
+                    photo.save()
+                    pending_photo.pending_photo_path = 'photos/uploads/' + os.path.basename(photo.image.path)
+                    os.remove(process_path)
+
+                pending_photo.save()
+            else:
+                # 비슷한 파일이 없는 경우
+                photo.save()
+                os.remove(process_path)
+                # 이미지 해시를 Redis에 저장
+                save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
+
+        except Exception as e:
+            error_log_file = open('error_log.txt', 'a')
+            error_log_file.write(f"Error processing file {file_path}: {str(e)}\n")
+            error_log_file.close()
+        finally:
+            try:
+                redis_conn.incr(f"photo_upload_progress:{user_id}")
+            except Exception as e:
+                error_log_file = open('error_log.txt', 'a')
+                error_log_file.write(f"Error updating Redis: {str(e)}\n")
+                error_log_file.close()
+
+    # 처리 완료 후 작업
     try:
         pendingPhotosCount = PendingApprovalPhoto.objects.filter(user_id=user_id, is_rejected=False).count()
         if pendingPhotosCount > 0:
@@ -194,50 +183,19 @@ def finalize_processing(user_id, photoscount, results):
                 )
         photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
         uploadedPhotoscount = photoscountafter - photoscount
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
+        error_log_file = open('error_log.txt', 'a')
+        error_log_file.write(f"User {user.username} uploaded {uploadedPhotoscount} photos.\n")
         error_log_file.close()
         if photoscountafter > photoscount:
             send_push_message_to_all(user_id, uploadedPhotoscount)
-        
-        try:
-            redis_conn = get_redis_connection("default")
-            redis_conn.delete(f"photo_upload_progress:{user_id}")
-            redis_conn.delete(f"photo_upload_total:{user_id}")
-        except Exception as e:
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"Error deleting Redis keys: {e}")
-            error_log_file.close()
-        
+
+        redis_conn.delete(f"photo_upload_progress:{user_id}")
+        redis_conn.delete(f"photo_upload_total:{user_id}")
+
     except Exception as e:
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"Error processing files: {e}")
+        error_log_file = open('error_log.txt', 'a')
+        error_log_file.write(f"Error processing files: {e}\n")
         error_log_file.close()
-
-@shared_task
-def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
-    photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
-    total_files = len(file_paths)
-
-    error_log_file = open(f'error_log.txt', 'a')
-    error_log_file.write(f"Starting to process {len(file_paths)} files for user {user_id}\n")
-    error_log_file.close()
-    
-    redis_conn = get_redis_connection("default")
-    
-    redis_conn.set(f"photo_upload_progress:{user_id}", 0)
-    redis_conn.set(f"photo_upload_total:{user_id}", total_files)
-
-    if preserve_order == 'true':
-        tasks = [process_file.s(file_path, description, user_id) 
-                 for file_path, description in zip(file_paths, descriptions)]
-        chord(tasks)(finalize_processing.s(user_id, photoscount))
-    else:
-        tasks = [process_file.s(file_path, description, user_id,) 
-                 for file_path, description in zip(file_paths, descriptions)]
-        chord(group(tasks))(finalize_processing.s(user_id, photoscount))
-
-    return "Processing started"
 
 def send_push_message_to_all(user_id, uploadedPhotoscount):
     User = get_user_model()

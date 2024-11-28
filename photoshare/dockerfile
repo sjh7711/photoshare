@@ -28,4 +28,4 @@ ENV PYTHONPATH="/app"
 WORKDIR /app/photoshare
 
 # Celery 실행
-CMD ["celery", "-A", "photoprocess", "worker", "--loglevel=info", "--max-memory-per-child=200000", "--max-tasks-per-child=1000", "--concurrency=2"]
+CMD ["celery", "-A", "photoprocess", "worker", "--loglevel=info"]
