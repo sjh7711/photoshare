@@ -50,19 +50,24 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
-    User = get_user_model()
-    user = User.objects.get(id=user_id)
-    photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
-    total_files = len(file_paths)
+    results = []
+    
+    try:
+        User = get_user_model()
+        user = User.objects.get(id=user_id)
+        photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
+        total_files = len(file_paths)
 
-    redis_conn = get_redis_connection("default")
-    redis_conn.set(f"photo_upload_progress:{user_id}", 0)
-    redis_conn.set(f"photo_upload_total:{user_id}", total_files)
+        redis_conn = get_redis_connection("default")
+        redis_conn.set(f"photo_upload_progress:{user_id}", 0)
+        redis_conn.set(f"photo_upload_total:{user_id}", total_files)
+    except Exception as e:
+        results.append(f"Error initializing processing: {e}, {file_paths}, userid: {user_id}")
 
     for file_path, description in zip(file_paths, descriptions):
         try:
             if not os.path.exists(file_path):
-                result = f"File not found: {file_path}"
+                results.append(f"File not found: {file_path}")
                 continue
 
             file_extension = os.path.splitext(file_path)[1].lower()
@@ -81,98 +86,116 @@ def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
                     subprocess.run(command, check=True)
                     os.remove(file_path)
                 except Exception as e:
-                    result = f"Error converting video to AVIF: {e}"
+                    results.append(f"Error converting video to AVIF: {e}, {file_path}, userid: {user_id}")
                     continue
                 process_path = avif_file_path
             else:
                 process_path = file_path
 
             # 이미지 해시 계산
-            image_hash = get_image_hash(process_path)
-            similar_filename = check_similarity_with_redis(image_hash)
+            try:
+                image_hash = get_image_hash(process_path)
+                similar_filename = check_similarity_with_redis(image_hash)
+            except Exception as e:
+                results.append(f"Error calculating image hash: {e}, {file_path}, userid: {user_id}")
+                continue
 
             # 이미지 저장
-            with open(process_path, 'rb') as file:
-                file_content = file.read()
+            try:
+                with open(process_path, 'rb') as file:
+                    file_content = file.read()
 
-            if file_extension in ['.gif', '.avif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg'] or (file_extension == '.webp' and Image.open(process_path).n_frames > 1):
-                image_file = ContentFile(file_content, name=os.path.basename(process_path))
-            else:
-                image = Image.open(io.BytesIO(file_content))
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
-                jpeg_image_io = io.BytesIO()
-                image.save(jpeg_image_io, format='JPEG', quality=85)
-                image_file = ContentFile(jpeg_image_io.getvalue(), name=f"{os.path.splitext(os.path.basename(process_path))[0]}.jpeg")
-
-            photo = Photo(image=image_file, description=description, uploaded_by=user)
-
-            if similar_filename:
-                pending_photo = PendingApprovalPhoto(
-                    description=description,
-                    user=user,
-                    is_rejected=False,
-                    similar_photo_path=similar_filename,
-                )
-                if "uploads/deleted/" in similar_filename:
-                    pending_photo.pending_photo_path = 'photos/temp/' + os.path.basename(process_path)
+                if file_extension in ['.gif', '.avif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg'] or (file_extension == '.webp' and Image.open(process_path).n_frames > 1):
+                    image_file = ContentFile(file_content, name=os.path.basename(process_path))
                 else:
-                    photo.save()
-                    pending_photo.pending_photo_path = 'photos/uploads/' + os.path.basename(photo.image.path)
-                    os.remove(process_path)
+                    image = Image.open(io.BytesIO(file_content))
+                    if image.mode != 'RGB':
+                        image = image.convert('RGB')
+                    jpeg_image_io = io.BytesIO()
+                    image.save(jpeg_image_io, format='JPEG', quality=85)
+                    image_file = ContentFile(jpeg_image_io.getvalue(), name=f"{os.path.splitext(os.path.basename(process_path))[0]}.jpeg")
 
-                pending_photo.save()
-            else:
-                # 비슷한 파일이 없는 경우
-                photo.save()
-                os.remove(process_path)
-                # 이미지 해시를 Redis에 저장
-                save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
+                photo = Photo(image=image_file, description=description, uploaded_by=user)
+            except Exception as e:
+                results.append(f"Error reading file: {e}, {file_path}, userid: {user_id}")
+                continue
+            
+            try:
+                if similar_filename:
+                    pending_photo = PendingApprovalPhoto(
+                        description=description,
+                        user=user,
+                        is_rejected=False,
+                        similar_photo_path=similar_filename,
+                    )
+                    if "uploads/deleted/" in similar_filename:
+                        pending_photo.pending_photo_path = 'photos/temp/' + os.path.basename(process_path)
+                    else:
+                        photo.save()
+                        pending_photo.pending_photo_path = 'photos/uploads/' + os.path.basename(photo.image.path)
+                        os.remove(process_path)
+
+                    pending_photo.save()
+                else:
+                    # 비슷한 파일이 없는 경우
+                    photo.save()
+                    os.remove(process_path)
+                    # 이미지 해시를 Redis에 저장
+                    save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
+            except Exception as e:
+                results.append(f"Error saving photo: {e}, {file_path}, userid: {user_id}")
+                continue
 
         except Exception as e:
-            result = f"Error processing file: {e}"
+            results.append(f"Error processing file: {e}, {file_path}, userid: {user_id}")
         finally:
             try:
                 redis_conn.incr(f"photo_upload_progress:{user_id}")
             except Exception as e:
-                result = f"Error updating progress: {e}"
+                results.append(f"Error updating progress: {e}, {file_path}, userid: {user_id}")
 
     # 처리 완료 후 작업
     try:
-        pendingPhotosCount = PendingApprovalPhoto.objects.filter(user_id=user_id, is_rejected=False).count()
-        if pendingPhotosCount > 0:
-            Notification.objects.create(
-                recipient_id=1,
-                message=f"{user.username}의 {pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다.",
-                count=1,
-                is_pending=True
-            )
-            pendingNotification = Notification.objects.filter(recipient_id=user_id, is_read=False, is_pending=True).first()
-            if pendingNotification:
-                pendingNotification.message = f"{pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다."
-                pendingNotification.save()
-            else:
+        try:
+            pendingPhotosCount = PendingApprovalPhoto.objects.filter(user_id=user_id, is_rejected=False).count()
+            if pendingPhotosCount > 0:
                 Notification.objects.create(
-                    recipient_id=user_id,
-                    message=f"{pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다.",
+                    recipient_id=1,
+                    message=f"{user.username}의 {pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다.",
                     count=1,
                     is_pending=True
                 )
-        photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
-        uploadedPhotoscount = photoscountafter - photoscount
+                pendingNotification = Notification.objects.filter(recipient_id=user_id, is_read=False, is_pending=True).first()
+                if pendingNotification:
+                    pendingNotification.message = f"{pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다."
+                    pendingNotification.save()
+                else:
+                    Notification.objects.create(
+                        recipient_id=user_id,
+                        message=f"{pendingPhotosCount}개의 사진이 이미 업로드 된 사진과 유사합니다.",
+                        count=1,
+                        is_pending=True
+                    )
+            photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
+            uploadedPhotoscount = photoscountafter - photoscount
+        except Exception as e:
+            results.append(f"Error checking pending photos: {e}, {file_paths}, userid: {user_id}")
         
-        if photoscountafter > photoscount:
-            send_push_message_to_all(user_id, uploadedPhotoscount)
+        try:
+            if photoscountafter > photoscount:
+                send_push_message_to_all(user_id, uploadedPhotoscount)
+        except Exception as e:
+            results.append(f"Error sending push message: {e}, {file_paths}, userid: {user_id}")
 
         redis_conn.delete(f"photo_upload_progress:{user_id}")
         redis_conn.delete(f"photo_upload_total:{user_id}")
         
-        result = file_paths + " Processing completed"
+        results.append(f"Processing completed: {file_paths} photos uploaded")
 
     except Exception as e:
-        result = f"Error finalizing processing: {e}"
+        results.append(f"Error finalizing processing: {e}, {file_paths}, userid: {user_id}")
     
-    return result
+    return results
 
 def send_push_message_to_all(user_id, uploadedPhotoscount):
     User = get_user_model()
@@ -220,19 +243,12 @@ def send_push_message_to_all(user_id, uploadedPhotoscount):
         
         excludeUser = Block.objects.filter(blocked=user).values_list('blocker_id', flat=True)
         
-        if excludeUser == []:
-            send_group_notification(
-                group_name='all_users',
-                payload=payload, 
-                ttl=1000
-            )
-        else:
-            send_group_notification(
-                group_name='all_users',
-                payload=payload, 
-                ttl=1000,
-                exclude_user_id=list(excludeUser)
-            )
+        send_group_notification(
+            group_name='all_users',
+            payload=payload, 
+            ttl=1000,
+            exclude_user_id=list(excludeUser)
+        )
 
 def extract_frames(file_uuid, file_path, temp_dir):
     with Image.open(file_path) as img:
