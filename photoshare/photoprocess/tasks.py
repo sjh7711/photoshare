@@ -21,8 +21,8 @@ from django_redis import get_redis_connection
 
 from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.DEBUG)
+# logger = logging.getLogger(__name__)
+# logging.basicConfig(level=logging.DEBUG)
 
 # 전역 변수로 ThreadPoolExecutor 생성
 executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
@@ -134,14 +134,16 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
-        logger.error(f"Error processing file: {e}")
+        # logger.error(f"Error processing file: {e}")
+        pass
     
     finally:
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
         except Exception as e:
-            logger.error(f"Error incrementing Redis key: {e}")
+            # logger.error(f"Error incrementing Redis key: {e}")
+            pass
 
 @shared_task
 def finalize_processing(results, user_id, photoscount): #chord의 처리 결과를 results로 받아야함
@@ -179,10 +181,12 @@ def finalize_processing(results, user_id, photoscount): #chord의 처리 결과�
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            logger.error(f"Error deleting Redis keys")
+            # logger.error(f"Error deleting Redis keys")
+            pass
         
     except Exception as e:
-        logger.error(f"Error finalizing processing: {e}")
+        # logger.error(f"Error finalizing processing: {e}")
+        pass
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
