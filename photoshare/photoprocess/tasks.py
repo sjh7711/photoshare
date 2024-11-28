@@ -21,9 +21,8 @@ from django_redis import get_redis_connection
 
 from photos.models import Photo, PendingApprovalPhoto, Block, Notification
 
-# 로깅 설정
-# logger = logging.getLogger(__name__)
-# logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
 
 # 전역 변수로 ThreadPoolExecutor 생성
 executor = ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
@@ -63,17 +62,9 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
 def process_file(file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
-
-    #"Starting to process {len(file_paths)} files for user {user_id}" 로깅 추가
-    error_log_file = open(f'error_log.txt', 'a')
-    error_log_file.write(f"Processing file {file_path} for user {user.username}")
-    error_log_file.close()
     
     try:
         if not os.path.exists(file_path):
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"File not found: {file_path}")
-            error_log_file.close()
             return
         
         file_extension = os.path.splitext(file_path)[1].lower()
@@ -92,9 +83,6 @@ def process_file(file_path, description, user_id):
                 subprocess.run(command, check=True)
                 os.remove(file_path)
             except Exception as e:
-                error_log_file = open(f'error_log.txt', 'a')
-                error_log_file.write(f"Error while converting video to AVIF: {e}")
-                error_log_file.close()
                 return None
             process_path = avif_file_path
         else:
@@ -146,21 +134,17 @@ def process_file(file_path, description, user_id):
             save_image_hash_to_redis('photos/uploads/' + os.path.basename(photo.image.path), image_hash)
         
     except Exception as e:
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"Error processing file {file_path}: {str(e)}")
-        error_log_file.close()
+        logger.error(f"Error processing file: {e}")
     
     finally:
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.incr(f"photo_upload_progress:{user_id}")
         except Exception as e:
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"Error updating Redis: {str(e)}")
-            error_log_file.close()
+            logger.error(f"Error incrementing Redis key: {e}")
 
 @shared_task
-def finalize_processing(results, user_id, photoscount):
+def finalize_processing(results, user_id, photoscount): #chord의 처리 결과를 results로 받아야함
     User = get_user_model()
     user = User.objects.get(id=user_id)
     
@@ -186,9 +170,7 @@ def finalize_processing(results, user_id, photoscount):
                 )
         photoscountafter = Photo.objects.filter(uploaded_by_id=user_id).count()
         uploadedPhotoscount = photoscountafter - photoscount
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"User {user.username} uploaded {uploadedPhotoscount} photos.")
-        error_log_file.close()
+        
         if photoscountafter > photoscount:
             send_push_message_to_all(user_id, uploadedPhotoscount)
         
@@ -197,23 +179,15 @@ def finalize_processing(results, user_id, photoscount):
             redis_conn.delete(f"photo_upload_progress:{user_id}")
             redis_conn.delete(f"photo_upload_total:{user_id}")
         except Exception as e:
-            error_log_file = open(f'error_log.txt', 'a')
-            error_log_file.write(f"Error deleting Redis keys: {e}")
-            error_log_file.close()
+            logger.error(f"Error deleting Redis keys")
         
     except Exception as e:
-        error_log_file = open(f'error_log.txt', 'a')
-        error_log_file.write(f"Error processing files: {e}")
-        error_log_file.close()
+        logger.error(f"Error finalizing processing: {e}")
 
 @shared_task
 def process_and_save_photos(file_paths, descriptions, user_id, preserve_order):
     photoscount = Photo.objects.filter(uploaded_by_id=user_id).count()
     total_files = len(file_paths)
-
-    error_log_file = open(f'error_log.txt', 'a')
-    error_log_file.write(f"Starting to process {len(file_paths)} files for user {user_id}\n")
-    error_log_file.close()
     
     redis_conn = get_redis_connection("default")
     
