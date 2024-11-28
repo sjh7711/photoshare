@@ -48,8 +48,15 @@ def check_similarity_with_redis(image_hash, min_distance_threshold=15):
     else:
         return None
 
-@shared_task
-def process_file(file_path, description, user_id):
+@shared_task(
+    bind=True,
+    max_retries=3,  # 최대 재시도 횟수
+    soft_time_limit=300,  # 5분 타임아웃
+    time_limit=600,  # 하드 타임아웃 10분
+    acks_late=True,  # 작업 완료 후 승인
+    retry_backoff=True  # 지수 백오프
+)
+def process_file(self, file_path, description, user_id):
     User = get_user_model()
     user = User.objects.get(id=user_id)
     
@@ -127,6 +134,7 @@ def process_file(file_path, description, user_id):
     
     except Exception as e:
         result = f"Error processing file: {e}"
+        self.retry(exc=e, countdown=10) 
     
     finally:
         try:
@@ -168,6 +176,8 @@ def finalize_processing(results, user_id, photoscount): #chord의 처리 결과�
         if photoscountafter > photoscount:
             send_push_message_to_all(user_id, uploadedPhotoscount)
         
+        result = "Processing finalized successfully"
+        
         try:
             redis_conn = get_redis_connection("default")
             redis_conn.delete(f"photo_upload_progress:{user_id}")
@@ -177,7 +187,7 @@ def finalize_processing(results, user_id, photoscount): #chord의 처리 결과�
         
     except Exception as e:
         result = f"Error finalizing processing: {e}"
-    
+
     return result
 
 @shared_task
