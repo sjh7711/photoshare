@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1
 
@@ -13,8 +13,8 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# /usr/local/lib/python3.9/site-packages/webpush/models.py 경로의 PushInformation 함수 수정 
-RUN sed -i "24i \ \ \ \ device_id = models.CharField(max_length=255, default='default_device_id')" /usr/local/lib/python3.9/site-packages/webpush/models.py
+# /usr/local/lib/python3.11/site-packages/webpush/models.py 경로의 PushInformation 함수 수정 
+RUN sed -i "24i \ \ \ \ device_id = models.CharField(max_length=255, default='default_device_id')" /usr/local/lib/python3.11/site-packages/webpush/models.py
 
 
 # 애플리케이션 코드 복사

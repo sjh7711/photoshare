@@ -27,7 +27,6 @@ import imagehash
 from .models import Photo, Comment, CustomUser, Notification, DeletedPhoto, Notice, PendingApprovalPhoto, Block
 from .forms import MultiPhotoForm, PhotoSearchForm, SignUpForm, EditProfileForm, CommentForm, NoticeForm
 from photoprocess.tasks import process_and_save_photos
-from photoprocess.tasks import convert_file_to_animation
 
 from django_redis import get_redis_connection
 
@@ -640,148 +639,6 @@ def get_upload_progress(request):
     percentage = (progress / total) * 100 if total > 0 else 0
     
     return JsonResponse({'progress': round(percentage)})
-
-def upload_photo_without_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        form = MultiPhotoForm(request.POST, request.FILES)
-        if form.is_valid() and username:
-            # IP 주소와 User-Agent 로깅
-            ip_address = request.META.get('HTTP_X_FORWARDED_FOR')
-            if ip_address:
-                ip_address = ip_address.split(',')[0].strip()
-            else:
-                ip_address = request.META.get('REMOTE_ADDR')
-            user_agent = request.META.get('HTTP_USER_AGENT')
-            logger.info(f"File upload attempt from IP: {ip_address}, User-Agent: {user_agent}")
-            
-            try:
-                user = get_object_or_404(get_user_model(), username=username)
-                files = request.FILES.getlist('images')
-                descriptions = request.POST.getlist('descriptions')
-                temp_dir = './photos/temp'
-                if not os.path.exists(temp_dir):
-                    os.makedirs(temp_dir)
-                
-                file_paths = []
-                file_descriptions = []
-                for i, f in enumerate(files):
-                    description = descriptions[i].strip() if i < len(descriptions) else ''
-                    fs = FileSystemStorage(location=temp_dir)
-                    filename = fs.save(f.name, f)
-                    file_path = os.path.join(temp_dir, filename)
-                    file_paths.append(file_path)
-                    file_descriptions.append(description)
-                    
-                process_and_save_photos.delay(file_paths, file_descriptions, user.id)
-                return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
-            except Exception as e:
-                return render(request, 'photos/upload_photo_without_login.html', {'form': form, 'error': str(e)})
-        else:
-            logger.warning("Form is not valid or username is missing")
-    else:
-        form = MultiPhotoForm()
-    return render(request, 'photos/upload_photo_without_login.html', {'form': form})
-
-ALLOWED_EXTENSIONS = ['.webp', '.avif', '.gif', '.mp4', '.avi', '.mov', '.mkv', '.flv', '.wmv', '.mpeg', '.mpg', '.3gp', '.webm', '.ogg']
-
-def is_valid_file(filename):
-    return os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
-
-@require_http_methods(["GET", "POST"])
-def convert_video(request):
-    if request.method == 'POST':
-        try:
-            file_info = json.loads(request.POST.get('file_info', '[]'))
-            
-            base_temp_dir = './photos/temp'
-            convert_dir = './photos/converts'
-            os.makedirs(convert_dir, exist_ok=True)
-
-            task_info = []
-
-            for i, info in enumerate(file_info):
-                file = request.FILES.get(f'file_{i}')
-                if not file or not is_valid_file(file.name):
-                    return JsonResponse({'success': False, 'error': f'Invalid file type for file {i}'})
-                
-                file_uuid = info['fileUuid']
-                
-                temp_dir = os.path.join(base_temp_dir, file_uuid)
-                os.makedirs(temp_dir, exist_ok=True)
-
-                fs = FileSystemStorage(location=temp_dir)
-                filename = fs.save(file.name, file)
-                file_path = os.path.join(temp_dir, filename)
-
-                start_time = float(info.get('startTime', 0))
-                end_time = float(info.get('endTime', 0))
-                frame_count = int(info.get('frameCount', 10))
-                file_format = info['format']
-                selectquality = info['quality']
-                size = info['size']
-                speed = info['speed']
-                
-                if file_format == 'gif':
-                    if selectquality == 'low':
-                        quality = 'bayer:bayer_scale=5'
-                    elif selectquality == 'med':
-                        quality = 'bayer:bayer_scale=4'
-                    elif selectquality == 'high':
-                        quality = 'floyd_steinberg'
-                elif file_format == 'webp':
-                    if selectquality == 'low':
-                        quality = 50
-                    elif selectquality == 'med':
-                        quality = 57
-                    elif selectquality == 'high':
-                        quality = 65
-                elif file_format == 'avif':
-                    if selectquality == 'low':
-                        quality = 43
-                    elif selectquality == 'med':
-                        quality = 35
-                    elif selectquality == 'high':
-                        quality = 23
-                
-                task = convert_file_to_animation.delay(file_path, temp_dir, file_uuid, start_time, end_time, frame_count, file_format, quality, size, speed)
-                task_info.append({
-                    'task_id': str(task.id),
-                    'file_uuid': file_uuid,
-                    'original_filename': file.name
-                })
-
-            return JsonResponse({'success': True, 'task_info': task_info})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-    else:
-        return render(request, 'photos/photo_convert.html')
-
-@require_http_methods(["GET"])
-def check_task_status(request, task_id):
-    task = convert_file_to_animation.AsyncResult(task_id)
-    if task.state == 'PENDING':
-        response = {
-            'state': task.state,
-            'status': 'Pending...'
-        }
-    elif task.state == 'PROGRESS':
-        response = {
-            'state': task.state,
-            'progress': task.info.get('progress', 0)
-        }
-    elif task.state == 'SUCCESS':
-        response = {
-            'state': task.state,
-            'result': task.result,
-        }
-    else:
-        response = {
-            'state': task.state,
-            'status': str(task.info),
-        }
-    return JsonResponse(response)
 ##############################################################################################################################
 #############################################  다운로드, 태그 수정 #############################################################
 ##############################################################################################################################
@@ -1411,7 +1268,7 @@ def logout_all_users(request):
 @superuser_required
 def cleanup_files(request):
     deleted_files_count = 0
-    roots = ['photos/uploads', 'photos/converts']
+    roots = ['photos/uploads']
     
     for directory in roots:
         uploads_dir = os.path.abs(directory)
@@ -1430,36 +1287,6 @@ def cleanup_files(request):
     return JsonResponse({'message': f'파일 정리가 완료되었습니다. {deleted_files_count}개의 파일이 정리되었습니다.'})
 
 from PIL import Image
-
-@require_POST
-@superuser_required
-def convert_images(request):
-    logger.info('이미지 변환 시작')
-    converted_files_count = 0
-    roots = ['photos/uploads']
-    
-    for root in roots:
-        uploads_dir = os.path.abspath(root)
-        for file_name in os.listdir(uploads_dir):
-            file_path = os.path.join(uploads_dir, file_name)
-            # jpeg, gif 파일이 아닌 경우 변환
-            if file_name.lower().endswith(('.jpg', '.png', '.webp', '.bmp')):
-                with Image.open(file_path) as img:
-                    if file_name.lower().endswith('.webp') and img.n_frames > 1:
-                        continue # Skip animated webp files
-                    else:
-                        logger.info(f'파일 변환 중: {file_name}')
-                        rgb_img = img.convert('RGB')
-                        new_file_name = os.path.splitext(file_name)[0] + '.jpeg'
-                        new_file_path = os.path.join(uploads_dir, new_file_name)
-                        rgb_img.save(new_file_path, 'JPEG', quality=85)
-                        os.remove(file_path)
-                        Photo.objects.filter(image=root + '/' + file_name).update(image=root + '/' + new_file_name)
-                        converted_files_count += 1
-                        logger.info(f'파일 변환 완료: {new_file_name}')
-
-    logger.info(f'총 {converted_files_count}개의 파일이 변환되었습니다.')
-    return JsonResponse({'message': f'파일 변환이 완료되었습니다. {converted_files_count}개의 파일이 변환되었습니다.'})
 
 @superuser_required
 def clear_log(request):

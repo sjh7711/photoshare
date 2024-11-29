@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: photoshare
-        image: 192.168.0.223/photoshare/photoshare:65
+        image: 192.168.0.223/photoshare/photoshare:66
         ports:
         - containerPort: 8000
         envFrom:
@@ -25,8 +25,6 @@ spec:
           mountPath: /app/photoshare/photos/temp
         - name: uploads-volume
           mountPath: /app/photoshare/photos/uploads
-        - name: converts-volume
-          mountPath: /app/photoshare/photos/converts
         - name: trashcan-volume
           mountPath: /app/photoshare/photos/trashcan
         - name: static-volume
@@ -40,9 +38,6 @@ spec:
       - name: uploads-volume
         persistentVolumeClaim:
           claimName: photoshare-uploads-pvc
-      - name: converts-volume
-        persistentVolumeClaim:
-          claimName: photoshare-converts-pvc
       - name: trashcan-volume
         persistentVolumeClaim:
           claimName: photoshare-trashcan-pvc

@@ -46,9 +46,6 @@ urlpatterns = [
     path('signup/', photo_views.signup, name='signup'),
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
-    
-    path('convert_video/', photo_views.convert_video, name='convert_video'),
-    path('check_task_status/<str:task_id>/', photo_views.check_task_status, name='check_task_status'),
 
     path('block_user/', photo_views.block_user, name='block_user'),
     path('unblock_user/', photo_views.unblock_user, name='unblock_user'),
@@ -85,6 +82,5 @@ urlpatterns = [
     path('notifications/read_all/', photo_views.mark_all_notifications_as_read, name='mark_all_notifications_as_read'),
     
     path('cleanup_files/', photo_views.cleanup_files, name='cleanup_files'),
-    path('convert_images/', photo_views.convert_images, name='convert_images'),
     path('clear-log/', photo_views.clear_log, name='clear-log'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

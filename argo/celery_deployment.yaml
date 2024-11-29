@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: celery
-        image: 192.168.0.223/photosharecelery/photosharecelery:65
+        image: 192.168.0.223/photosharecelery/photosharecelery:66
         envFrom:
         - secretRef:
             name: django-secret
@@ -23,8 +23,6 @@ spec:
           mountPath: /app/photoshare/photos/temp
         - name: uploads-volume
           mountPath: /app/photoshare/photos/uploads
-        - name: converts-volume
-          mountPath: /app/photoshare/photos/converts
         - name: resizedicon-volume
           mountPath: /app/photoshare/photos/resized_icon
         - name: log-volume
@@ -36,9 +34,6 @@ spec:
       - name: uploads-volume
         persistentVolumeClaim:
           claimName: photoshare-uploads-pvc
-      - name: converts-volume
-        persistentVolumeClaim:
-          claimName: photoshare-converts-pvc
       - name: resizedicon-volume
         persistentVolumeClaim:
           claimName: photoshare-resizedicon-pvc
