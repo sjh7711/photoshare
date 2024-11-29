@@ -1,14 +1,14 @@
 # Python 3 기반 이미지 사용
 FROM python:3.9-slim
 
-# ffmpeg 최신 버전 설치
-RUN apt-get update && apt-get install -y wget && \
+RUN apt-get update && \
+    apt-get install -y wget xz-utils && \
     wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
     tar -xJf ffmpeg-release-amd64-static.tar.xz && \
     cp ffmpeg-*-amd64-static/ffmpeg /usr/local/bin/ && \
     cp ffmpeg-*-amd64-static/ffprobe /usr/local/bin/ && \
-    rm -rf ffmpeg-*-amd64-static* && rm ffmpeg-release-amd64-static.tar.xz && \
-    apt-get remove -y wget && apt-get autoremove -y && apt-get clean
+    rm -rf ffmpeg-*-amd64-static* ffmpeg-release-amd64-static.tar.xz && \
+    apt-get remove -y wget xz-utils && apt-get autoremove -y && apt-get clean
 
 # 시스템 패키지 설치
 RUN apt-get update && \
