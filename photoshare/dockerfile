@@ -1,9 +1,6 @@
 # Python 3 기반 이미지 사용
 FROM python:3.9-slim
 
-RUN add-apt-repository --remove https://ppa.launchpadcontent.net/jonathonf/ffmpeg-4/ubuntu
-RUN add-apt-repository ppa:ubuntuhandbook1/ffmpeg6
-
 # 시스템 패키지 설치
 RUN apt-get update && \
     apt-get install -y python3-dev default-libmysqlclient-dev build-essential pkg-config ffmpeg && \
