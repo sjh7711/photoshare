@@ -14,9 +14,16 @@ spec:
     spec:
       containers:
       - name: photoshare
-        image: 192.168.0.223/photoshare/photoshare:70
+        image: 192.168.0.223/photoshare/photoshare:71
         ports:
         - containerPort: 8000
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         envFrom:
         - secretRef:
             name: django-secret

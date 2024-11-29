@@ -14,7 +14,14 @@ spec:
     spec:
       containers:
       - name: celery
-        image: 192.168.0.223/photosharecelery/photosharecelery:70
+        image: 192.168.0.223/photosharecelery/photosharecelery:71
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         envFrom:
         - secretRef:
             name: django-secret
