@@ -63,7 +63,6 @@ urlpatterns = [
     path('my_statistics/', photo_views.my_statistics, name='my_statistics'),
     path('common_user_activity/<int:user_id>/', photo_views.common_user_activity, name='common_user_activity'),
     
-    path('upload_photo_without_login_rabbi_thole/', photo_views.upload_photo_without_login, name='upload_photo_without_login'),
     path('upload/', photo_views.upload_photo, name='upload_photo'),
     path('download_liked_photos/', photo_views.download_liked_photos, name='download_liked_photos'),
     
