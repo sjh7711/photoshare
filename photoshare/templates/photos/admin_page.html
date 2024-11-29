@@ -4,43 +4,16 @@
 
 {% block content %}
 {% if user.id == 1 %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% comment %} <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script> {% endcomment %}
 <div class="container min-h-screen mx-auto px-4 py-4">
     <div class="flex flex-col md:flex-row items-center justify-between mb-4">
         <h3 class="text-xl font-bold mb-2 md:mb-0">관리자 페이지</h3>
-        <div class="flex flex-wrap justify-center md:justify-end space-x-2">
-            <button id="logout_all_users-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs mb-2 md:mb-0 whitespace-nowrap">ALL 로그아웃</button>
-        </div>
+        <button id="logout_all_users-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs mb-2 md:mb-0 whitespace-nowrap">ALL 로그아웃</button>
     </div>
     <hr class="my-4">
     <div class="mb-4">
-        <div class="mb-4">
-            <div class="flex flex-col md:flex-row items-center justify-between mb-4">
-                <h4 class="text-lg font-semibold">리소스 사용량</h4>
-                <div class="flex space-x-2">
-                    <select id="timeRange" class="w-full px-1 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="300">최근 5분</option>
-                        <option value="1800">최근 30분</option>
-                        <option value="3600">최근 1시간</option>
-                        <option value="21600">최근 6시간</option>
-                        <option value="43200">최근 12시간</option>
-                        <option value="86400">최근 24시간</option>
-                    </select>
-                    <button id="showHighCPU" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap">CPU ↑80</button>
-                    <button id="resetZoom" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap">줌 리셋</button>
-                </div>
-            </div>
-            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                <div class="w-full md:w-1/2">
-                    <canvas id="usageChart" class="w-full h-64"></canvas>
-                </div>
-                <div class="w-full md:w-1/2">
-                    <canvas id="networkChart" class="w-full h-64"></canvas>
-                </div>
-            </div>
-        </div>
         <div class="flex flex-col md:flex-row items-center justify-between mt-4">
             <h4 class="text-lg font-semibold mb-2 md:mb-0">로그 파일</h4>
             <button id="clear-log-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded text-xs whitespace-nowrap" onclick="clearLog()">로그 정리</button>
