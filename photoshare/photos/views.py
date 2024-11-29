@@ -1286,7 +1286,6 @@ def cleanup_files(request):
 
     return JsonResponse({'message': f'파일 정리가 완료되었습니다. {deleted_files_count}개의 파일이 정리되었습니다.'})
 
-from PIL import Image
 
 @superuser_required
 def clear_log(request):

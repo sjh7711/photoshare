@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: celery
-        image: 192.168.0.223/photosharecelery/photosharecelery:68
+        image: 192.168.0.223/photosharecelery/photosharecelery:69
         envFrom:
         - secretRef:
             name: django-secret
